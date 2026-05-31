@@ -33,9 +33,17 @@ The current coupling to Keycloak is small and limited to:
 
 ---
 
-## Phase 1 - Provider-agnostic OIDC (foundation)  `[ ]`
+## Phase 1 - Provider-agnostic OIDC (foundation)  `[x]`
 
 Goal: any compliant OIDC IdP works by configuration alone, no code changes.
+
+**Status: implemented.** The verifier is now driven by provider-neutral
+`OIDC_*` settings (resolved in `internal/config`), claim extraction is a
+configurable dotted-path mapper (`auth.ClaimMapper` in `internal/auth/claims.go`)
+supporting array, nested, object-keyed (Zitadel-style) and string claim shapes,
+and optional discovery (`OIDC_DISCOVERY_URL`) auto-fills issuer/JWKS. The
+`KEYCLOAK_*` variables remain as fallbacks, so existing deployments are
+unchanged. See the configuration reference below.
 
 Work:
 1. **Configurable claim mapping** (new env, keep `KEYCLOAK_*` as aliases):
@@ -54,6 +62,45 @@ Work:
 
 Outcome: turns Pier from a "Keycloak gateway" into an "OIDC gateway." Everything
 below becomes config + a short guide.
+
+### Configuration reference
+
+All settings are environment variables. `OIDC_*` take precedence; when empty
+they fall back to the `KEYCLOAK_*` equivalent so existing setups keep working.
+
+| Variable | Purpose | Fallback |
+|----------|---------|----------|
+| `OIDC_ISSUER` | Expected `iss` claim (full URL). | `<KEYCLOAK_URL>/realms/<KEYCLOAK_REALM>` |
+| `OIDC_JWKS_URL` | JWKS endpoint for signing keys. | `KEYCLOAK_JWKS_URL` |
+| `OIDC_AUDIENCE` | Expected `aud` claim. | resolved client id |
+| `OIDC_CLIENT_ID` | Client id at the IdP. | `KEYCLOAK_CLIENT_ID` |
+| `OIDC_USERNAME_CLAIM` | Dotted path to the identity claim. | `preferred_username` then `sub` |
+| `OIDC_GROUPS_CLAIM` | Dotted path to the groups/roles claim. | `groups` + `realm_access.roles` |
+| `OIDC_DISCOVERY_URL` | Base or well-known URL; fills any unset issuer/JWKS. | (none) |
+
+`OIDC_GROUPS_CLAIM` accepts a string array, a string-keyed object (keys are
+treated as group names), or a single string; a leading `/` is stripped from each
+name. Group names must still resolve to the `<bucket>-<ro|rw|wo>` (plus `*`)
+ACL convention.
+
+Example - a generic OIDC IdP with discovery and roles in a custom claim:
+
+```env
+OIDC_DISCOVERY_URL=https://idp.example.com/realms/main
+OIDC_AUDIENCE=pier-s3
+OIDC_CLIENT_ID=pier-s3
+OIDC_GROUPS_CLAIM=roles
+OIDC_USERNAME_CLAIM=preferred_username
+```
+
+Example - Zitadel (project roles arrive as an object keyed by role name):
+
+```env
+OIDC_ISSUER=https://my-instance.zitadel.cloud
+OIDC_JWKS_URL=https://my-instance.zitadel.cloud/oauth/v2/keys
+OIDC_AUDIENCE=<project-client-id>
+OIDC_GROUPS_CLAIM=urn:zitadel:iam:org:project:roles
+```
 
 ---
 

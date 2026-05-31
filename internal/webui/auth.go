@@ -21,9 +21,18 @@ const (
 	groupsKey   contextKey = "groups"
 )
 
-// AuthMiddleware extracts and verifies the Bearer token from the Authorization header or HttpOnly cookie.
-// On success, stores claims, username, and groups in the request context.
+// AuthMiddleware extracts and verifies the Bearer token using the default
+// claim mapping (Keycloak-compatible). See AuthMiddlewareWithMapper for
+// provider-neutral claim configuration.
 func AuthMiddleware(verifier auth.TokenVerifier) func(http.Handler) http.Handler {
+	return AuthMiddlewareWithMapper(verifier, auth.ClaimMapper{})
+}
+
+// AuthMiddlewareWithMapper extracts and verifies the Bearer token from the
+// Authorization header or HttpOnly cookie, resolving identity and groups via
+// the supplied claim mapper. On success, stores claims, username, and groups in
+// the request context.
+func AuthMiddlewareWithMapper(verifier auth.TokenVerifier, mapper auth.ClaimMapper) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenString := extractToken(r)
@@ -38,8 +47,8 @@ func AuthMiddleware(verifier auth.TokenVerifier) func(http.Handler) http.Handler
 				return
 			}
 
-			username := auth.ExtractUser(claims)
-			groups := auth.ExtractGroups(claims)
+			username := mapper.User(claims)
+			groups := mapper.Groups(claims)
 
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, claimsKey, claims)

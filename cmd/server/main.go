@@ -30,17 +30,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Resolve provider-neutral OIDC settings (OIDC_* over KEYCLOAK_* fallbacks,
+	// plus optional discovery) so any compliant OIDC IdP works by configuration.
+	oidcSettings, err := cfg.ResolveOIDC()
+	if err != nil {
+		logger.Error("failed to resolve OIDC settings", "error", err.Error())
+		os.Exit(1)
+	}
+
 	oidcCfg := auth.NewOIDCConfig(
 		cfg.KeycloakURL,
 		cfg.KeycloakRealm,
-		cfg.KeycloakClientID,
+		oidcSettings.ClientID,
 		cfg.KeycloakClientSecret,
 		"", // redirectURI handled by frontend oidc-client-ts
 	)
 
-	// Bind tokens to this realm (issuer) and client (audience) so a validly
-	// signed token minted for a different realm or client cannot authenticate.
-	verifier, err := auth.NewJWKSVerifier(cfg.KeycloakJWKSURL, oidcCfg.IssuerURL, cfg.KeycloakClientID)
+	// Claim mapping: empty username/groups claims select the default
+	// (Keycloak-compatible) extraction.
+	claimMapper := auth.ClaimMapper{
+		UsernameClaim: oidcSettings.UsernameClaim,
+		GroupsClaim:   oidcSettings.GroupsClaim,
+	}
+
+	// Bind tokens to this issuer and audience so a validly signed token minted
+	// for a different realm or client cannot authenticate.
+	verifier, err := auth.NewJWKSVerifier(oidcSettings.JWKSURL, oidcSettings.Issuer, oidcSettings.Audience)
 	if err != nil {
 		logger.Error("failed to initialize JWKS verifier", "error", err.Error())
 		os.Exit(1)
@@ -53,8 +68,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	s3Server := buildS3Server(cfg, verifier, s3Client, logger)
-	uiServer := buildUIServer(cfg, verifier, s3Client, oidcCfg, logger)
+	s3Server := buildS3Server(cfg, verifier, s3Client, claimMapper, logger)
+	uiServer := buildUIServer(cfg, verifier, s3Client, oidcCfg, claimMapper, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -67,8 +82,8 @@ func main() {
 	logger.Info("shutdown complete")
 }
 
-func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, logger *slog.Logger) *http.Server {
-	s3Handler := proxy.NewS3Handler(verifier, s3Client, logger)
+func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, mapper auth.ClaimMapper, logger *slog.Logger) *http.Server {
+	s3Handler := proxy.NewS3HandlerWithMapper(verifier, s3Client, mapper, logger)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_health", healthHandler)
 	mux.HandleFunc("/_ready", readyHandler)
@@ -89,13 +104,13 @@ func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *pr
 	}
 }
 
-func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, oidcCfg *auth.OIDCConfig, logger *slog.Logger) *http.Server {
+func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, oidcCfg *auth.OIDCConfig, mapper auth.ClaimMapper, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_health", healthHandler)
 	mux.HandleFunc("/_ready", readyHandler)
 
 	api := webui.NewAPI(s3Client, logger)
-	api.RegisterRoutes(mux, verifier, oidcCfg)
+	api.RegisterRoutes(mux, verifier, oidcCfg, mapper)
 	mux.Handle("/", webui.StaticHandler(cfg.KeycloakURL))
 
 	return &http.Server{

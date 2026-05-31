@@ -411,9 +411,11 @@ func (a *API) HandleDeleteObject(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// RegisterRoutes registers all API routes on the given mux.
-func (a *API) RegisterRoutes(mux *http.ServeMux, verifier auth.TokenVerifier, oidcCfg *auth.OIDCConfig) {
-	authMw := AuthMiddleware(verifier)
+// RegisterRoutes registers all API routes on the given mux, using the supplied
+// claim mapper to resolve identity and groups from verified tokens (pass the
+// zero auth.ClaimMapper for the default Keycloak-compatible behavior).
+func (a *API) RegisterRoutes(mux *http.ServeMux, verifier auth.TokenVerifier, oidcCfg *auth.OIDCConfig, mapper auth.ClaimMapper) {
+	authMw := AuthMiddlewareWithMapper(verifier, mapper)
 
 	// Throttle the unauthenticated OIDC endpoints per client IP to blunt
 	// brute-force / token-exchange abuse: 20 requests/minute with a small

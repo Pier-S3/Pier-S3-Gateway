@@ -476,7 +476,7 @@ func TestRegisterRoutesRoutingAndAuth(t *testing.T) {
 
 	mux := http.NewServeMux()
 	// Must not panic - the old {key...}/meta pattern was invalid.
-	require.NotPanics(t, func() { api.RegisterRoutes(mux, verifier, oidcCfg) })
+	require.NotPanics(t, func() { api.RegisterRoutes(mux, verifier, oidcCfg, auth.ClaimMapper{}) })
 
 	// A key literally containing "meta" routes to GetObject, not meta handler.
 	req := httptest.NewRequest("GET", "/api/v1/buckets/reports/objects/some/meta", nil)

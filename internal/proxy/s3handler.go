@@ -21,17 +21,27 @@ type S3Handler struct {
 	verifier  auth.TokenVerifier
 	backend   S3Backend
 	forwarder proxyForwarder
+	mapper    auth.ClaimMapper
 	logger    *slog.Logger
 }
 
-// NewS3Handler creates a new S3 proxy handler.
+// NewS3Handler creates a new S3 proxy handler with the default claim mapping
+// (Keycloak-compatible). See NewS3HandlerWithMapper for provider-neutral claim
+// configuration.
 //
 // s3Client may be nil; callers that only need the auth/ACL gating (e.g. unit
 // tests) can pass nil, in which case the bucket-listing and pass-through paths
 // return a 502 rather than panicking.
 func NewS3Handler(verifier auth.TokenVerifier, s3Client *S3Client, logger *slog.Logger) *S3Handler {
+	return NewS3HandlerWithMapper(verifier, s3Client, auth.ClaimMapper{}, logger)
+}
+
+// NewS3HandlerWithMapper is like NewS3Handler but uses the supplied claim mapper
+// to resolve identity and groups from token claims, supporting any OIDC IdP.
+func NewS3HandlerWithMapper(verifier auth.TokenVerifier, s3Client *S3Client, mapper auth.ClaimMapper, logger *slog.Logger) *S3Handler {
 	h := &S3Handler{
 		verifier: verifier,
+		mapper:   mapper,
 		logger:   logger,
 	}
 	// Only wire the backend/forwarder when a real client is supplied. A typed
@@ -71,8 +81,8 @@ func (h *S3Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := auth.ExtractUser(claims)
-	groups := auth.ExtractGroups(claims)
+	username := h.mapper.User(claims)
+	groups := h.mapper.Groups(claims)
 
 	// Parse bucket from path: /<bucket>/... or /<bucket>
 	bucket := pathBucket(r.URL.Path)

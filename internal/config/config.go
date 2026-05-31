@@ -21,9 +21,20 @@ type Config struct {
 	KeycloakClientID     string
 	KeycloakClientSecret string
 	KeycloakJWKSURL      string
-	ListenS3Addr         string
-	ListenUIAddr         string
-	LogLevel             string
+	// Provider-neutral OIDC settings. When set they take precedence over the
+	// KEYCLOAK_* equivalents, letting any compliant OIDC IdP be configured
+	// without code changes. Empty values fall back to the KEYCLOAK_* fields so
+	// existing Keycloak deployments keep working unchanged. See ResolveOIDC.
+	OIDCIssuer        string
+	OIDCJWKSURL       string
+	OIDCAudience      string
+	OIDCClientID      string
+	OIDCUsernameClaim string
+	OIDCGroupsClaim   string
+	OIDCDiscoveryURL  string
+	ListenS3Addr      string
+	ListenUIAddr      string
+	LogLevel          string
 }
 
 // Default values applied by Load when an environment variable is unset or
@@ -54,6 +65,13 @@ func Load() *Config {
 		KeycloakClientID:     getEnv("KEYCLOAK_CLIENT_ID", ""),
 		KeycloakClientSecret: getEnv("KEYCLOAK_CLIENT_SECRET", ""),
 		KeycloakJWKSURL:      getEnv("KEYCLOAK_JWKS_URL", ""),
+		OIDCIssuer:           getEnv("OIDC_ISSUER", ""),
+		OIDCJWKSURL:          getEnv("OIDC_JWKS_URL", ""),
+		OIDCAudience:         getEnv("OIDC_AUDIENCE", ""),
+		OIDCClientID:         getEnv("OIDC_CLIENT_ID", ""),
+		OIDCUsernameClaim:    getEnv("OIDC_USERNAME_CLAIM", ""),
+		OIDCGroupsClaim:      getEnv("OIDC_GROUPS_CLAIM", ""),
+		OIDCDiscoveryURL:     getEnv("OIDC_DISCOVERY_URL", ""),
 		ListenS3Addr:         getEnv("LISTEN_S3_ADDR", DefaultListenS3Addr),
 		ListenUIAddr:         getEnv("LISTEN_UI_ADDR", DefaultListenUIAddr),
 		LogLevel:             getEnv("LOG_LEVEL", DefaultLogLevel),
@@ -109,6 +127,80 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// OIDCSettings is the fully-resolved OIDC verification configuration, after
+// applying OIDC_* over KEYCLOAK_* precedence (and, when configured, discovery).
+type OIDCSettings struct {
+	// Issuer is the expected "iss" claim value.
+	Issuer string
+	// JWKSURL is the JWKS endpoint used to fetch signing keys.
+	JWKSURL string
+	// Audience is the expected "aud" claim value.
+	Audience string
+	// ClientID identifies this client at the IdP token endpoints.
+	ClientID string
+	// UsernameClaim / GroupsClaim are optional dotted claim paths. Empty means
+	// "use the default extraction" (see auth.ClaimMapper).
+	UsernameClaim string
+	GroupsClaim   string
+}
+
+// ResolveOIDC computes the effective OIDC settings by layering provider-neutral
+// OIDC_* values over the KEYCLOAK_* fallbacks:
+//
+//   - ClientID:   OIDC_CLIENT_ID,  else KEYCLOAK_CLIENT_ID
+//   - Audience:   OIDC_AUDIENCE,   else the resolved ClientID
+//   - Issuer:     OIDC_ISSUER,     else <KEYCLOAK_URL>/realms/<KEYCLOAK_REALM>
+//   - JWKSURL:    OIDC_JWKS_URL,   else KEYCLOAK_JWKS_URL
+//   - Username/Groups claim: OIDC_USERNAME_CLAIM / OIDC_GROUPS_CLAIM (may be empty)
+//
+// Discovery (OIDC_DISCOVERY_URL), when set, fills any Issuer/JWKSURL still empty
+// after the above; explicit values always win over discovered ones.
+func (c *Config) ResolveOIDC() (OIDCSettings, error) {
+	clientID := firstNonEmpty(c.OIDCClientID, c.KeycloakClientID)
+	s := OIDCSettings{
+		ClientID:      clientID,
+		Audience:      firstNonEmpty(c.OIDCAudience, clientID),
+		Issuer:        firstNonEmpty(c.OIDCIssuer, deriveKeycloakIssuer(c.KeycloakURL, c.KeycloakRealm)),
+		JWKSURL:       firstNonEmpty(c.OIDCJWKSURL, c.KeycloakJWKSURL),
+		UsernameClaim: c.OIDCUsernameClaim,
+		GroupsClaim:   c.OIDCGroupsClaim,
+	}
+
+	if c.OIDCDiscoveryURL != "" && (s.Issuer == "" || s.JWKSURL == "") {
+		disc, err := discoverOIDC(c.OIDCDiscoveryURL)
+		if err != nil {
+			return OIDCSettings{}, fmt.Errorf("oidc discovery: %w", err)
+		}
+		if s.Issuer == "" {
+			s.Issuer = disc.Issuer
+		}
+		if s.JWKSURL == "" {
+			s.JWKSURL = disc.JWKSURL
+		}
+	}
+
+	return s, nil
+}
+
+// firstNonEmpty returns the first argument that is non-empty after trimming.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// deriveKeycloakIssuer builds the Keycloak realm issuer URL, or "" when either
+// input is empty.
+func deriveKeycloakIssuer(keycloakURL, realm string) string {
+	if strings.TrimSpace(keycloakURL) == "" || strings.TrimSpace(realm) == "" {
+		return ""
+	}
+	return strings.TrimRight(keycloakURL, "/") + "/realms/" + realm
 }
 
 // SlogLevel parses the configured LogLevel string into a slog.Level.
