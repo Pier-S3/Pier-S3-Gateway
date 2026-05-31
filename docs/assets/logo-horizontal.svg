@@ -1,17 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="248" height="100" viewBox="0 0 248 100" role="img" aria-label="Pier S3 Gateway">
-  <!-- icon tile -->
-  <rect x="10" y="10" width="80" height="80" rx="18" fill="#0061FF"/>
-  <!-- glyph centered within the tile -->
-  <g fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" transform="translate(26 27.9) scale(2)">
-    <rect x="7.5" y="2.75" width="9" height="7" rx="1.2"/>
-    <path d="M12 2.75v7M7.5 6.25h9"/>
-    <path d="M3.5 12.4h17"/>
-    <path d="M7 12.4v4.2M12 12.4v4.2M17 12.4v4.2"/>
-    <path d="M3.5 19.4q2.125 -1.6 4.25 0t4.25 0 4.25 0 4.25 0"/>
-  </g>
-  <!-- wordmark, vertically centered on the tile's mid-line (y=50) -->
-  <text x="108" y="38" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="100" viewBox="0 0 268 100" role="img" aria-label="Pier S3 Gateway">
+  <!-- icon (from logo.svg) -->
+  <svg x="10" y="10" width="80" height="80" viewBox="10 10 80 80">
+    <path d="M 28 10 L 72 10 C 81.94113 10 90 18.058875 90 28 L 90 72 C 90 81.94113 81.94113 90 72 90 L 28 90 C 18.058875 90 10 81.94113 10 72 L 10 28 C 10 18.058875 18.058875 10 28 10 Z" fill="#0061ff"/>
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4">
+      <path d="M 43.4 33.4 L 56.6 33.4 C 57.92548 33.4 59 34.474517 59 35.8 L 59 45 C 59 46.325483 57.92548 47.4 56.6 47.4 L 43.4 47.4 C 42.074517 47.4 41 46.325483 41 45 L 41 35.8 C 41 34.474517 42.074517 33.4 43.4 33.4 Z"/>
+      <path d="M 50 33.4 L 50 47.4 M 41 40.4 L 59 40.4"/>
+      <line x1="33" y1="52.7" x2="67" y2="52.7"/>
+      <path d="M 40 52.7 L 40 61.1 M 50 52.7 L 50 61.1 M 60 52.7 L 60 61.1"/>
+      <path d="M 33 66.7 C 35.833333 64.56667 38.666667 64.56667 41.5 66.7 C 44.333333 68.83333 47.166667 68.83333 50 66.7 C 52.833333 64.56667 55.666667 64.56667 58.5 66.7 C 61.33333 68.83333 64.16667 68.83333 67 66.7"/>
+    </g>
+  </svg>
+  <!-- wordmark: GATEWAY is stretched to the exact width of "Pier S3" by giving
+       both lines the same textLength (lengthAdjust=spacing scales only the
+       inter-glyph spacing, not the glyph shapes). -->
+  <text x="108" y="38" textLength="150" lengthAdjust="spacing" dominant-baseline="central"
+        font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
         font-size="34" font-weight="700" fill="#1e1919">Pier S3</text>
-  <text x="108" y="63" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
-        font-size="15" font-weight="500" letter-spacing="2" fill="#637282">GATEWAY</text>
+  <text x="108" y="63" textLength="150" lengthAdjust="spacing" dominant-baseline="central"
+        font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="15" font-weight="500" fill="#637282">GATEWAY</text>
 </svg>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="10 10 80 80" width="80" height="80">
+  <defs/>
+  <g id="Canvas_1" fill="none" fill-opacity="1" stroke="none" stroke-dasharray="none" stroke-opacity="1">
+    <title>Canvas 1</title>
+    <g id="Canvas_1_Layer_1">
+      <title>Layer 1</title>
+      <g id="Graphic_2">
+        <path d="M 28 10 L 72 10 C 81.94113 10 90 18.058875 90 28 L 90 72 C 90 81.94113 81.94113 90 72 90 L 28 90 C 18.058875 90 10 81.94113 10 72 L 10 28 C 10 18.058875 18.058875 10 28 10 Z" fill="#0061ff"/>
+      </g>
+      <g id="Group_3">
+        <g id="Graphic_8">
+          <path d="M 43.4 33.4 L 56.6 33.4 C 57.92548 33.4 59 34.474517 59 35.8 L 59 45 C 59 46.325483 57.92548 47.4 56.6 47.4 L 43.4 47.4 C 42.074517 47.4 41 46.325483 41 45 L 41 35.8 C 41 34.474517 42.074517 33.4 43.4 33.4 Z" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+        </g>
+        <g id="Graphic_7">
+          <path d="M 50 33.4 L 50 47.4 M 41 40.4 L 59 40.4" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+        </g>
+        <g id="Graphic_6">
+          <line x1="33" y1="52.7" x2="67" y2="52.7" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+        </g>
+        <g id="Graphic_5">
+          <path d="M 40 52.7 L 40 61.1 M 50 52.7 L 50 61.1 M 60 52.7 L 60 61.1" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+        </g>
+        <g id="Graphic_4">
+          <path d="M 33 66.7 C 35.833333 64.56667 38.666667 64.56667 41.5 66.7 C 44.333333 68.83333 47.166667 68.83333 50 66.7 C 52.833333 64.56667 55.666667 64.56667 58.5 66.7 C 61.33333 68.83333 64.16667 68.83333 67 66.7" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
