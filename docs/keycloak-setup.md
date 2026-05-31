@@ -1,6 +1,6 @@
 # Keycloak setup: realm, client, user
 
-Step-by-step rollout guide for wiring the S3 Proxy Gateway to Keycloak. Every
+Step-by-step rollout guide for wiring Pier S3 Gateway to Keycloak. Every
 requirement below is derived from what the gateway actually validates - see
 `internal/auth` and `cmd/server/main.go`.
 
@@ -16,14 +16,29 @@ On every request the proxy verifies the Bearer **access token**
 | `iss` | exactly `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}` | `IssuerURL`, bound in `main.go` |
 | `aud` | must contain `${KEYCLOAK_CLIENT_ID}` (e.g. `s3-proxy`) | `expectedAudience` |
 | identity | `preferred_username`, fallback `sub` | `ExtractUser` |
-| authorization | `groups[]` **or** `realm_access.roles[]`, each `<bucket>-<ro|rw>` | `ExtractGroups`, `acl.parseGroup` |
+| authorization | `groups[]` **or** `realm_access.roles[]`, each `<bucket>-<ro\|rw\|wo>` | `ExtractGroups`, `acl.parseGroup` |
 
 ACL rule format (`internal/acl/resolver.go`): the **last** hyphen splits the
-policy. `ro` -> GET/HEAD/OPTIONS, `rw` -> + PUT/POST/DELETE.
+bucket from the policy. Policies:
+
+| Policy | GET/HEAD/OPTIONS | PUT/POST | DELETE | Use |
+|--------|:---:|:---:|:---:|-----|
+| `ro`   | ✓ | - | - | read-only |
+| `rw`   | ✓ | ✓ | ✓ | full access (write implies delete) |
+| `wo`   | - | ✓ | - | write-only / upload (no read or delete) |
+
+The bucket part may be the wildcard `*`, which applies the policy to **every**
+bucket. A user's grants are the union of all their matching groups.
 
 - `reports-ro`        -> read bucket `reports`
-- `dev-artifacts-rw`  -> read+write bucket `dev-artifacts`
-- `raw-events-rw`     -> read+write bucket `raw-events`
+- `dev-artifacts-rw`  -> read+write+delete bucket `dev-artifacts`
+- `uploads-wo`        -> upload-only to bucket `uploads`
+- `*-ro`              -> read **every** bucket (e.g. an auditor/reader role)
+- `*-rw`              -> full access to every bucket
+
+Bucket/object administration (create/delete bucket, policy, ACL, versioning,
+lifecycle, CORS, encryption, ...) is **always blocked** regardless of policy
+(`IsAdminOperation`).
 
 A leading `/` (Keycloak group paths) is stripped automatically.
 
@@ -79,7 +94,7 @@ claim you use must travel in a **default** scope, not an optional one.
 Works out of the box: realm roles ride in `realm_access.roles` via the default
 `roles` scope, which the gateway reads.
 
-1. Realm roles -> Create role -> `reports-ro` (repeat for each `<bucket>-<ro|rw>`)
+1. Realm roles -> Create role -> `reports-ro` (repeat for each `<bucket>-<ro|rw|wo>`)
 2. Assign in step 4 via the user's Role mapping.
 
 ### Option B - Groups (matches the README naming)
@@ -109,51 +124,49 @@ curl -s -d "client_id=s3-proxy" -d "username=alice" -d "password=PASS" \
   | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss,aud,preferred_username,groups,realm_access}'
 ```
 `aud` must contain `s3-proxy`; `groups` or `realm_access.roles` must contain your
-`<bucket>-<ro|rw>` entries.
+`<bucket>-<ro|rw|wo>` entries.
 
 ---
 
 ## Gotchas specific to this project
 
-### G1. Issuer / hostname mismatch (dev)
+### G1. Issuer / hostname must match the browser's view of Keycloak
 The browser logs in via `http://localhost:8180`, so the token `iss` is
-`http://localhost:8180/realms/master`. But the dev compose sets the proxy's
-`KEYCLOAK_URL=http://keycloak:8180`, so it expects
-`http://keycloak:8180/realms/master` -> **mismatch -> token rejected**.
-
-The proxy only *string-compares* `iss` (it fetches keys from the separate
-`KEYCLOAK_JWKS_URL`). Dev fix - point the proxy's issuer at the browser-facing
-host while keeping JWKS internal:
+`http://localhost:8180/realms/master`. The proxy only *string-compares* `iss`
+(it fetches keys from the separate `KEYCLOAK_JWKS_URL`), so its `KEYCLOAK_URL`
+must use the **same host the browser sees**, while JWKS stays internal. The dev
+compose is already configured this way (`docker-compose.dev.yml`, service
+`pier-s3-gateway`):
 ```yaml
-# docker-compose.dev.yml, service s3-proxy:
 KEYCLOAK_URL: http://localhost:8180          # issuer match with browser tokens
 KEYCLOAK_JWKS_URL: http://keycloak:8180/realms/master/protocol/openid-connect/certs  # fetched in-cluster
 ```
-Prod: serve Keycloak on one canonical URL (ingress) used by both browser and
-proxy, and pin `KC_HOSTNAME` so `iss` is deterministic. Then `KEYCLOAK_URL` and
-the browser URL are identical and there is no split.
+If you ever point `KEYCLOAK_URL` at the in-cluster name (`http://keycloak:8180`)
+instead, browser tokens will be rejected (`iss` mismatch). Prod: serve Keycloak
+on one canonical URL (ingress) used by both browser and proxy, and pin
+`KC_HOSTNAME` so `iss` is deterministic.
 
 ### G2. Frontend env is baked at BUILD time
-`VITE_KEYCLOAK_URL` / `VITE_KEYCLOAK_CLIENT_ID` are read at Vite build time
-(`AuthProvider.tsx`). `deployments/Dockerfile` currently runs `npm run build`
-with no build args, so the embedded SPA falls back to
-`authority: https://keycloak.example.com/realms/myrealm` - it will NOT point at
-your Keycloak. To fix, pass them through the frontend build stage:
-```dockerfile
-# Stage 1 (frontend)
-ARG VITE_KEYCLOAK_URL
-ARG VITE_KEYCLOAK_CLIENT_ID
-ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
-RUN npm run build
+`VITE_KEYCLOAK_URL` / `VITE_KEYCLOAK_CLIENT_ID` are read at Vite **build** time
+(`AuthProvider.tsx`) - not at runtime. `deployments/Dockerfile` accepts them as
+build args (`ARG`/`ENV` before `npm run build`), and `docker-compose.dev.yml`
+already passes them for the dev stack:
+```yaml
+# docker-compose.dev.yml, service pier-s3-gateway:
+build:
+  args:
+    VITE_KEYCLOAK_URL: http://localhost:8180/realms/master
+    VITE_KEYCLOAK_CLIENT_ID: s3-proxy
 ```
-and build with:
+For your own image build, pass them explicitly, otherwise the SPA falls back to
+the `keycloak.example.com` default and will NOT point at your Keycloak:
 ```bash
-docker compose build \
-  --build-arg VITE_KEYCLOAK_URL=http://localhost:8180/realms/master \
-  --build-arg VITE_KEYCLOAK_CLIENT_ID=s3-proxy s3-proxy
+docker build -f deployments/Dockerfile \
+  --build-arg VITE_KEYCLOAK_URL=https://keycloak.example.com/realms/<realm> \
+  --build-arg VITE_KEYCLOAK_CLIENT_ID=s3-proxy \
+  -t pier-s3-gateway:latest .
 ```
-`VITE_KEYCLOAK_URL` is the realm URL the **browser** hits, i.e.
-`http://localhost:8180/realms/master`.
+`VITE_KEYCLOAK_URL` is the realm URL the **browser** hits.
 
 ### G3. Keycloak startup race
 The gateway retries the initial JWKS fetch (~60s) so a still-starting Keycloak no
@@ -169,6 +182,6 @@ while Keycloak boots; it proceeds once `/certs` is reachable.
 | `failed to initialize JWKS verifier ... connection refused` | Keycloak not up yet | wait (auto-retries) / G3 |
 | `token verification failed` + audience | `aud` lacks `s3-proxy` | add Audience mapper (2a) |
 | `token verification failed` + issuer | `iss` host mismatch | G1 |
-| 403 on a bucket the user should access | role/group missing or wrong shape | must be exactly `<bucket>-<ro|rw>`; check token claim (step 4) |
+| 403 on a bucket the user should access | role/group missing or wrong shape | must be exactly `<bucket>-<ro|rw|wo>`; check token claim (step 4) |
 | Login redirect loop / CORS error in console | redirect URI or Web origins wrong | step 2 Login settings |
 | SPA redirects to `keycloak.example.com` | frontend built without `VITE_KEYCLOAK_URL` | G2 |

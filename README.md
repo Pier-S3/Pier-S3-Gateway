@@ -11,8 +11,8 @@
 
 **Pier S3 Gateway** is an S3 proxy gateway with a web UI. It provides
 authorized access to an S3-compatible object store (SeaweedFS) through Keycloak
-OIDC: JWT verification, group/role-based ACL of the form `<bucket>-<ro|rw>`, and
-proxying of S3 operations.
+OIDC: JWT verification, group/role-based ACL of the form `<bucket>-<ro|rw|wo>`
+(plus `*` wildcard grants across all buckets), and proxying of S3 operations.
 
 > 🌍 **Translations:** [Русский](docs/i18n/ru/README.md). The English README is
 > the source of truth; localized copies live under [`docs/i18n/`](docs/i18n/).
@@ -71,9 +71,13 @@ Once it is up:
 1. Open http://localhost:8180 (admin / admin)
 2. Create a realm or use `master`
 3. Create the client `s3-proxy` (Client Protocol: openid-connect)
-4. Create a user and assign groups/roles of the form `<bucket>-<policy>`:
+4. Create a user and assign groups/roles of the form `<bucket>-<policy>`,
+   where `<policy>` is one of `ro` (read), `rw` (read + write + delete) or
+   `wo` (write-only / upload):
    - `reports-ro` - read access to the `reports` bucket
-   - `dev-artifacts-rw` - read and write access to `dev-artifacts`
+   - `dev-artifacts-rw` - read, write and delete in `dev-artifacts`
+   - `uploads-wo` - upload-only to `uploads` (no listing/download/delete)
+   - `*-ro` - read access to **every** bucket (wildcard; e.g. for an auditor)
 
 > Full runbook for creating the realm / client / user (audience mapper,
 > roles-vs-groups model, and the issuer/CORS/Vite-build gotchas):

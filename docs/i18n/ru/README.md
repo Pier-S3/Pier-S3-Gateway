@@ -4,7 +4,7 @@
 
 > The pier for your object storage.
 
-**Pier S3 Gateway** - S3 proxy gateway с Web UI. Обеспечивает авторизованный доступ к S3-совместимому хранилищу (SeaweedFS) через Keycloak OIDC: проверка JWT, ACL по группам/ролям вида `<bucket>-<ro|rw>` и проксирование S3-операций.
+**Pier S3 Gateway** - S3 proxy gateway с Web UI. Обеспечивает авторизованный доступ к S3-совместимому хранилищу (SeaweedFS) через Keycloak OIDC: проверка JWT, ACL по группам/ролям вида `<bucket>-<ro|rw|wo>` (плюс wildcard `*` на все бакеты) и проксирование S3-операций.
 
 ## Требования
 
