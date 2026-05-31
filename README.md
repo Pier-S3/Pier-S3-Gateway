@@ -122,6 +122,24 @@ make docker-run
 
 ## Kubernetes
 
+### Helm (recommended)
+
+```bash
+helm install pier-s3-gateway ./deployments/helm/pier-s3-gateway \
+  --namespace pier-s3-gateway --create-namespace \
+  --set image.repository=registry.example.com/pier-s3-gateway \
+  --set image.tag=v1.0.0 \
+  --set ingress.s3Host=s3.example.com \
+  --set ingress.uiHost=s3-ui.example.com
+```
+
+The chart parameterizes all of the manifests below (replicas/HPA, ingress
+hosts + TLS, NetworkPolicy, PDB, resources, security context) and supports two
+secret sources: External Secrets Operator (default) or a plain/pre-existing
+Secret. See [`deployments/helm/pier-s3-gateway/README.md`](deployments/helm/pier-s3-gateway/README.md).
+
+### Raw manifests
+
 ```bash
 # Apply all manifests
 make k8s-apply

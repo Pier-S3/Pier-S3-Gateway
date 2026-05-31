@@ -1,0 +1,31 @@
+Pier S3 Gateway has been deployed.
+
+Release:   {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Image:     {{ include "pier-s3-gateway.image" . }}
+
+Secrets source:
+{{- if .Values.externalSecret.enabled }}
+  ExternalSecret "{{ include "pier-s3-gateway.secretName" . }}" pulling from
+  {{ .Values.externalSecret.secretStore.kind }}/{{ .Values.externalSecret.secretStore.name }}
+  at "{{ .Values.externalSecret.remoteKey }}".
+{{- else if .Values.secret.existingSecret }}
+  Pre-existing Secret "{{ .Values.secret.existingSecret }}".
+{{- else }}
+  Helm-managed Secret "{{ include "pier-s3-gateway.secretName" . }}".
+  WARNING: values are stored in the release - use this only for dev.
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Reach it at:
+  S3 proxy: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.s3Host }}
+  Web UI:   http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.uiHost }}
+{{- else }}
+
+Ingress is disabled. Port-forward to try it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "pier-s3-gateway.fullname" . }} {{ .Values.service.uiPort }}:{{ .Values.service.uiPort }}
+{{- end }}
+
+Check rollout:
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "pier-s3-gateway.fullname" . }}

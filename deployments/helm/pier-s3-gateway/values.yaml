@@ -1,0 +1,147 @@
+# Default values for pier-s3-gateway.
+
+# -- Number of replicas (ignored when autoscaling.enabled=true).
+replicaCount: 2
+
+image:
+  repository: registry.example.com/pier-s3-gateway
+  # -- Image tag. Defaults to .Chart.AppVersion when empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Ports the container listens on (S3 proxy + Web UI).
+service:
+  type: ClusterIP
+  s3Port: 8080
+  uiPort: 8081
+
+# Non-secret runtime configuration (passed as plain env vars).
+config:
+  logLevel: "info"
+
+# ---------------------------------------------------------------------------
+# Secrets. Pier reads S3 + Keycloak settings from env. Choose ONE source:
+#
+#   externalSecret.enabled=true  -> render an External Secrets Operator
+#                                    ExternalSecret pulling from a secret store
+#                                    (e.g. Vault). No secret values in the chart.
+#   externalSecret.enabled=false -> render a plain Secret from secret.data
+#                                    (base64'd by Helm). Use only for dev or
+#                                    when you manage the Secret out-of-band with
+#                                    secret.create=false.
+# ---------------------------------------------------------------------------
+externalSecret:
+  enabled: true
+  # Refresh interval for the ExternalSecret.
+  refreshInterval: 1h
+  secretStore:
+    name: vault-backend
+    kind: ClusterSecretStore
+  # Vault (or other store) path that holds the properties below.
+  remoteKey: secret/data/pier-s3-gateway
+  # Map of env var name -> property name in the remote secret.
+  properties:
+    S3_ACCESS_KEY: s3_access_key
+    S3_SECRET_KEY: s3_secret_key
+    S3_ENDPOINT: s3_endpoint
+    S3_REGION: s3_region
+    KEYCLOAK_URL: keycloak_url
+    KEYCLOAK_REALM: keycloak_realm
+    KEYCLOAK_CLIENT_ID: keycloak_client_id
+    KEYCLOAK_CLIENT_SECRET: keycloak_client_secret
+    KEYCLOAK_JWKS_URL: keycloak_jwks_url
+
+secret:
+  # Whether Helm should create a plain Secret (only when externalSecret.enabled=false).
+  # Set false to reference a pre-existing Secret via existingSecret.
+  create: true
+  # Name of a pre-existing Secret to use instead of creating one.
+  existingSecret: ""
+  # Plain key/value pairs rendered into a Secret (dev only - do not commit real values).
+  data: {}
+    # S3_ACCESS_KEY: ""
+    # S3_SECRET_KEY: ""
+    # S3_ENDPOINT: "http://seaweedfs:8333"
+    # S3_REGION: "us-east-1"
+    # KEYCLOAK_URL: ""
+    # KEYCLOAK_REALM: ""
+    # KEYCLOAK_CLIENT_ID: "s3-proxy"
+    # KEYCLOAK_CLIENT_SECRET: ""
+    # KEYCLOAK_JWKS_URL: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+  # The S3 API host (routes to the s3 port).
+  s3Host: pier-s3-gateway.example.com
+  # The Web UI host (routes to the ui port).
+  uiHost: s3-ui.example.com
+  tls:
+    enabled: true
+    secretName: pier-s3-gateway-tls
+
+networkPolicy:
+  enabled: true
+  # Namespace label of the ingress controller allowed to reach the pods.
+  ingressNamespaceLabel: ingress-nginx
+  # Egress ports the gateway needs (DNS + Keycloak HTTPS + SeaweedFS S3).
+  keycloakPort: 443
+  seaweedfsPort: 8333
+
+# Pod-level security context (matches the hardened manifest defaults).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container-level security context.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+# Probes hit the UI port's health endpoints.
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

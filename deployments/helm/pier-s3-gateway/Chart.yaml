@@ -1,0 +1,21 @@
+apiVersion: v2
+name: pier-s3-gateway
+description: Pier S3 Gateway - an authorizing S3 proxy with a web UI (Keycloak OIDC + group/role ACL)
+type: application
+# Chart version - bump on chart changes.
+version: 0.1.0
+# Default app version - the container image tag (overridable via image.tag).
+appVersion: "latest"
+home: https://github.com/Pier-S3/Pier-S3-Gateway
+sources:
+  - https://github.com/Pier-S3/Pier-S3-Gateway
+keywords:
+  - s3
+  - proxy
+  - gateway
+  - keycloak
+  - oidc
+  - seaweedfs
+maintainers:
+  - name: Pier S3
+    url: https://github.com/Pier-S3

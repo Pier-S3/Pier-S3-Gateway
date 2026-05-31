@@ -1,0 +1,45 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pier-s3-gateway.fullname" . }}
+  labels:
+    {{- include "pier-s3-gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pier-s3-gateway.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Values.networkPolicy.ingressNamespaceLabel }}
+      ports:
+        - port: {{ .Values.service.s3Port }}
+          protocol: TCP
+        - port: {{ .Values.service.uiPort }}
+          protocol: TCP
+  egress:
+    # DNS resolution
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Keycloak (HTTPS)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: {{ .Values.networkPolicy.keycloakPort }}
+          protocol: TCP
+    # SeaweedFS (S3)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: {{ .Values.networkPolicy.seaweedfsPort }}
+          protocol: TCP
+{{- end }}
