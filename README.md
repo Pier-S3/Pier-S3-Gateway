@@ -245,4 +245,5 @@ Criteria: p99 latency ≤ 5ms (authorization overhead), error_rate < 0.1%
 
 - [API reference](docs/api.md)
 - [Keycloak setup runbook](docs/keycloak-setup.md)
+- [Auth providers - integration roadmap](docs/auth-providers.md)
 - Translations: [`docs/i18n/`](docs/i18n/)
