@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Pier S3 Gateway">
+  <rect width="1280" height="640" fill="#ffffff"/>
+  <!-- centered lockup: icon tile + wordmark, as a group centered on (640,300) -->
+  <g transform="translate(404 230)">
+    <!-- icon tile -->
+    <rect x="0" y="0" width="140" height="140" rx="32" fill="#0061FF"/>
+    <g fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 28.5) scale(3.5)">
+      <rect x="7.5" y="2.75" width="9" height="7" rx="1.2"/>
+      <path d="M12 2.75v7M7.5 6.25h9"/>
+      <path d="M3.5 12.4h17"/>
+      <path d="M7 12.4v4.2M12 12.4v4.2M17 12.4v4.2"/>
+      <path d="M3.5 19.4q2.125 -1.6 4.25 0t4.25 0 4.25 0 4.25 0"/>
+    </g>
+    <!-- wordmark -->
+    <text x="172" y="58" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+          font-size="60" font-weight="700" fill="#1e1919">Pier S3</text>
+    <text x="172" y="104" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+          font-size="26" font-weight="500" letter-spacing="4" fill="#637282">GATEWAY</text>
+  </g>
+  <!-- tagline -->
+  <text x="640" y="500" text-anchor="middle" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="28" font-weight="400" fill="#637282">The pier for your object storage</text>
+</svg>
