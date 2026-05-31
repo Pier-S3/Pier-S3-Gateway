@@ -14,8 +14,10 @@ authorized access to an S3-compatible object store (SeaweedFS) through Keycloak
 OIDC: JWT verification, group/role-based ACL of the form `<bucket>-<ro|rw|wo>`
 (plus `*` wildcard grants across all buckets), and proxying of S3 operations.
 
-> 🌍 **Translations:** [Русский](docs/i18n/ru/README.md). The English README is
-> the source of truth; localized copies live under [`docs/i18n/`](docs/i18n/).
+> 🌍 **Translations:** [Русский](docs/i18n/ru/README.md) ·
+> [Español](docs/i18n/es/README.md) · [Italiano](docs/i18n/it/README.md) ·
+> [Français](docs/i18n/fr/README.md). The English README is the source of truth;
+> localized copies live under [`docs/i18n/`](docs/i18n/).
 
 ## Requirements
 
