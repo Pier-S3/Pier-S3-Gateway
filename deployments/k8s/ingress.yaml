@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pier-s3-gateway
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # First-layer per-client rate limiting at the edge. The application also
+    # enforces a per-IP limiter on auth endpoints; this caps overall request
+    # and connection volume before traffic reaches the gateway.
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - pier-s3-gateway.example.com
+        - s3-ui.example.com
+      secretName: pier-s3-gateway-tls
+  rules:
+    - host: pier-s3-gateway.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pier-s3-gateway
+                port:
+                  number: 8080
+    - host: s3-ui.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pier-s3-gateway
+                port:
+                  number: 8081

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="248" height="100" viewBox="0 0 248 100" role="img" aria-label="Pier S3 Gateway">
+  <!-- icon tile -->
+  <rect x="10" y="10" width="80" height="80" rx="18" fill="#0061FF"/>
+  <!-- glyph centered within the tile -->
+  <g fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" transform="translate(26 27.9) scale(2)">
+    <rect x="7.5" y="2.75" width="9" height="7" rx="1.2"/>
+    <path d="M12 2.75v7M7.5 6.25h9"/>
+    <path d="M3.5 12.4h17"/>
+    <path d="M7 12.4v4.2M12 12.4v4.2M17 12.4v4.2"/>
+    <path d="M3.5 19.4q2.125 -1.6 4.25 0t4.25 0 4.25 0 4.25 0"/>
+  </g>
+  <!-- wordmark, vertically centered on the tile's mid-line (y=50) -->
+  <text x="108" y="38" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="34" font-weight="700" fill="#1e1919">Pier S3</text>
+  <text x="108" y="63" dominant-baseline="central" font-family="Inter, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="15" font-weight="500" letter-spacing="2" fill="#637282">GATEWAY</text>
+</svg>

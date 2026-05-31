@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pier-s3-gateway
+  labels:
+    app: pier-s3-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: pier-s3-gateway
+  ports:
+    - name: s3
+      port: 8080
+      targetPort: s3
+      protocol: TCP
+    - name: ui
+      port: 8081
+      targetPort: ui
+      protocol: TCP

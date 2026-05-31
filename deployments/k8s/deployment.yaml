@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pier-s3-gateway
+  labels:
+    app: pier-s3-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pier-s3-gateway
+  template:
+    metadata:
+      labels:
+        app: pier-s3-gateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pier-s3-gateway
+          image: registry.example.com/pier-s3-gateway:latest
+          ports:
+            - name: s3
+              containerPort: 8080
+              protocol: TCP
+            - name: ui
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: pier-s3-gateway-secrets
+          env:
+            - name: LISTEN_S3_ADDR
+              value: ":8080"
+            - name: LISTEN_UI_ADDR
+              value: ":8081"
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /_ready
+              port: ui
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_health
+              port: ui
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

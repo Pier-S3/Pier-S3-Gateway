@@ -1,0 +1,64 @@
+services:
+  # SeaweedFS — S3-совместимое хранилище
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    # -s3.config defines an S3 identity. Recent images enable S3 auth by
+    # default (Auth enabled / 0 keys -> InvalidAccessKeyId), so we must supply
+    # credentials that match the gateway's S3_ACCESS_KEY/S3_SECRET_KEY.
+    command: "server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.port=9333 -volume.port=8080"
+    ports:
+      - "8333:8333"   # S3 API
+      - "9333:9333"   # Master
+    volumes:
+      - seaweedfs-data:/data
+      - ./deployments/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+
+  # Keycloak — OIDC provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8180
+    ports:
+      - "8180:8180"
+
+  # Pier S3 Gateway
+  pier-s3-gateway:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+      args:
+        # Browser-facing Keycloak realm URL baked into the SPA (see G2).
+        VITE_KEYCLOAK_URL: http://localhost:8180/realms/master
+        VITE_KEYCLOAK_CLIENT_ID: s3-proxy
+    ports:
+      - "8080:8080"   # S3 Proxy
+      - "8081:8081"   # Web UI
+    environment:
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: admin
+      S3_REGION: us-east-1
+      # Issuer must match the host the BROWSER uses to log in (tokens carry
+      # iss=http://localhost:8180/...). JWKS is fetched in-cluster via the
+      # service name. See docs/keycloak-setup.md (G1).
+      KEYCLOAK_URL: http://localhost:8180
+      KEYCLOAK_REALM: master
+      KEYCLOAK_CLIENT_ID: s3-proxy
+      KEYCLOAK_CLIENT_SECRET: ""
+      KEYCLOAK_JWKS_URL: http://keycloak:8180/realms/master/protocol/openid-connect/certs
+      LISTEN_S3_ADDR: ":8080"
+      LISTEN_UI_ADDR: ":8081"
+      LOG_LEVEL: debug
+    # The gateway retries the initial JWKS fetch (internal/auth) so it tolerates
+    # Keycloak still starting up. restart: on-failure is belt-and-suspenders for
+    # any other transient startup error.
+    restart: on-failure
+    depends_on:
+      - seaweedfs
+      - keycloak
+
+volumes:
+  seaweedfs-data:

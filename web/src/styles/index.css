@@ -1,0 +1,495 @@
+/*
+ * Theme variables.
+ *
+ * These are the light-theme defaults (the original Dropbox palette). At runtime
+ * ThemeProvider overrides every `--dbx-*` value on <html> from the active AntD
+ * theme (light, dark, or a custom theme) and sets `data-theme="light|dark"`.
+ * The `[data-theme="dark"]` block below is a static fallback so the first paint
+ * (before JS hydrates) and any non-JS path still render a coherent dark surface.
+ */
+:root {
+  --dbx-blue: #0061ff;
+  --dbx-border: #e7e7e7;
+  --dbx-bg: #fafafa;
+  --dbx-text: #1e1919;
+  --dbx-muted: #637282;
+  /* Surfaces and accents that used to be hardcoded in component CSS. */
+  --dbx-surface: #ffffff;
+  --dbx-row-hover: #f3f7ff;
+  --dbx-dropzone-hover: #f7faff;
+
+  /*
+   * Spacing scale (4/8-pt grid). Use these instead of ad-hoc pixel numbers so
+   * gaps, paddings and margins stay on a consistent rhythm across the app.
+   * --space-1: 4px   --space-2: 8px   --space-3: 12px
+   * --space-4: 16px  --space-5: 24px  --space-6: 32px
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  /* Minimum comfortable hit area for icon-only controls. */
+  --control-min: 36px;
+}
+
+/* Static dark fallback (runtime values from ThemeProvider take precedence). */
+[data-theme='dark'] {
+  --dbx-border: #303030;
+  --dbx-bg: #141414;
+  --dbx-text: rgba(255, 255, 255, 0.85);
+  --dbx-muted: rgba(255, 255, 255, 0.45);
+  --dbx-surface: #1d1d1d;
+  --dbx-row-hover: #1f1f1f;
+  --dbx-dropzone-hover: #111a2c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  background: var(--dbx-bg);
+  color: var(--dbx-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App shell */
+.app-sider {
+  background: var(--dbx-surface) !important;
+  border-right: 1px solid var(--dbx-border);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--dbx-text);
+}
+
+.app-logo .anticon,
+.app-logo svg {
+  color: var(--dbx-blue);
+  font-size: 22px;
+}
+
+.app-header {
+  background: var(--dbx-surface);
+  border-bottom: 1px solid var(--dbx-border);
+  padding: 0 var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  /* Auto height so the cluster can wrap onto a second line on narrow widths
+     instead of overflowing; keeps a comfortable single-row height otherwise. */
+  min-height: 60px;
+  height: auto;
+}
+
+.app-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  /* Long bucket names truncate rather than push the controls off-screen. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* User menu trigger - borderless, in the same visual family as the theme and
+   language switchers (transparent, subtle hover, comfortable hit area). */
+.user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-min);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dbx-text);
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease;
+}
+
+.user-menu-trigger:hover {
+  background: var(--dbx-row-hover);
+}
+
+.user-menu-trigger:focus-visible {
+  outline: 2px solid var(--dbx-blue);
+  outline-offset: 2px;
+}
+
+.user-menu-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-caret {
+  font-size: 10px;
+  color: var(--dbx-muted);
+}
+
+/* On phones drop the username/caret to keep just the avatar in the cluster. */
+@media (max-width: 480px) {
+  .user-menu-name,
+  .user-menu-caret {
+    display: none;
+  }
+}
+
+.app-content {
+  padding: var(--space-5) var(--space-6);
+  background: var(--dbx-bg);
+}
+
+.sider-nav-label {
+  padding: var(--space-2) var(--space-5);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dbx-muted);
+}
+
+/* On phones the header padding tightens and the cluster gap relaxes so the
+   wrapped controls keep adequate touch spacing. */
+@media (max-width: 480px) {
+  .app-header {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .app-header-right {
+    gap: var(--space-3);
+  }
+
+  .app-content {
+    padding: var(--space-4);
+  }
+}
+
+/* Bucket cards */
+.bucket-card {
+  border: 1px solid var(--dbx-border);
+  border-radius: 8px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.bucket-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Long bucket names truncate with an ellipsis inside the card title; the full
+   name is available via Tooltip on hover. */
+.bucket-card .bucket-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bucket-card:focus-visible {
+  outline: 2px solid var(--dbx-blue);
+  outline-offset: 2px;
+}
+
+/* Access is shown in its own low-emphasis footer block, separated by a hairline
+   rule - intentionally small and muted so it never competes with the name. */
+.bucket-access {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--dbx-border);
+}
+
+.bucket-access-label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--dbx-muted);
+}
+
+.bucket-access-value {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--dbx-muted);
+  background: var(--dbx-row-hover);
+}
+
+/* A whisper of color to distinguish read-only from read-write, without shouting. */
+.bucket-access-value.rw {
+  color: #237804;
+  background: rgba(82, 196, 26, 0.1);
+}
+
+.bucket-access-value.ro {
+  color: #0958d9;
+  background: rgba(22, 119, 255, 0.1);
+}
+
+/* Write-only (upload): amber - distinct from read (blue) and read/write (green). */
+.bucket-access-value.wo {
+  color: #ad6800;
+  background: rgba(250, 173, 20, 0.12);
+}
+
+/* File table */
+
+/* Give the whole table a single coherent rounded border. AntD only rounds the
+   header's top corners by default, which left the bottom edge square against a
+   borderless body - looked unfinished. Wrap it in a hairline border and round
+   all four corners. */
+.file-table .ant-table {
+  border: 1px solid var(--dbx-border);
+  border-radius: 8px;
+}
+
+/* Clip the header's own top rounding to the wrapper radius so corners line up. */
+.file-table .ant-table-container {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Comfortable horizontal padding so cell content is not jammed against the
+   table edge. AntD's "middle" size is tight here. NOTE: AntD v5 injects its own
+   cell padding via runtime CSS-in-JS at equal specificity, winning by source
+   order - so we double the wrapper class (.file-table IS .ant-table-wrapper) to
+   raise specificity and reliably override it. Align to the spacing scale. */
+.file-table.ant-table-wrapper .ant-table.ant-table-middle .ant-table-thead > tr > th,
+.file-table.ant-table-wrapper .ant-table.ant-table-middle .ant-table-tbody > tr > td {
+  padding: 12px 18px;
+}
+
+/* Drop the doubled bottom border under the last row (the wrapper provides it). */
+.file-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+.file-table .ant-table-tbody > tr {
+  cursor: pointer;
+}
+
+.file-table .ant-table-tbody > tr:hover > td {
+  background: var(--dbx-row-hover);
+}
+
+/* Visible keyboard focus ring on rows so the primary action (open folder /
+   show info) is discoverable and reachable without a mouse. */
+.file-table .ant-table-tbody > tr:focus-visible {
+  outline: 2px solid var(--dbx-blue);
+  outline-offset: -2px;
+}
+
+.file-table .ant-table-tbody > tr:focus-visible > td {
+  background: var(--dbx-row-hover);
+}
+
+/* Folder rows read as navigable; file rows do not look like they download on
+   touch. The folder name carries a subtle affordance on hover. */
+.file-table .row-folder:hover .file-name-cell > span:last-child {
+  text-decoration: underline;
+  text-decoration-color: var(--dbx-border);
+}
+
+/* Row action controls: the download icon-button is revealed on row hover/focus
+   and is always available to keyboard users; the "more actions" menu stays. */
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* Icon-only row controls get a comfortable square hit area so the download and
+   "more actions" buttons are easy to tap and never crowd each other. */
+.row-actions .ant-btn {
+  min-width: var(--control-min);
+  height: var(--control-min);
+}
+
+.row-download-btn {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.file-table .ant-table-tbody > tr:hover .row-download-btn,
+.file-table .ant-table-tbody > tr:focus-within .row-download-btn,
+.row-download-btn:focus-visible {
+  opacity: 1;
+}
+
+.file-name-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Truncate long file/folder names instead of forcing the row wider. */
+.file-name-cell > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name-cell .anticon {
+  font-size: 18px;
+}
+
+.file-name-cell .folder-icon {
+  color: var(--dbx-blue);
+}
+
+.file-name-cell .file-icon {
+  color: var(--dbx-muted);
+}
+
+/* Upload zone (Dropbox-style dashed drop area) */
+.dbx-dropzone .ant-upload-drag {
+  border: 2px dashed var(--dbx-border);
+  border-radius: 12px;
+  background: var(--dbx-surface);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dbx-dropzone .ant-upload-drag:hover {
+  border-color: var(--dbx-blue);
+  background: var(--dbx-dropzone-hover);
+}
+
+.dbx-dropzone .ant-upload-drag-icon .anticon {
+  color: var(--dbx-blue);
+  font-size: 40px;
+}
+
+/* Login */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dbx-bg);
+  padding: var(--space-5);
+}
+
+.login-card {
+  width: 420px;
+  max-width: 100%;
+  text-align: center;
+  border: 1px solid var(--dbx-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+/* Theme/language controls live in their own top row so they never overlap the
+   centered logo below. */
+.login-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .login-wrap {
+    padding: var(--space-4);
+  }
+}
+
+.login-logo {
+  margin-top: 4px;
+}
+
+.login-logo .anticon,
+.login-logo svg {
+  font-size: 48px;
+  color: var(--dbx-blue);
+}
+
+.center-spin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+/* File preview */
+.preview-body {
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.preview-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.preview-media {
+  display: block;
+  max-width: 100%;
+  max-height: 68vh;
+  margin: 0 auto;
+}
+
+.preview-audio {
+  width: 100%;
+}
+
+.preview-pdf {
+  width: 100%;
+  height: 68vh;
+  border: 1px solid var(--dbx-border);
+  border-radius: 8px;
+  background: var(--dbx-surface);
+}
+
+.preview-text {
+  margin: 0;
+  padding: var(--space-3);
+  max-height: 68vh;
+  overflow: auto;
+  background: var(--dbx-row-hover);
+  border: 1px solid var(--dbx-border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
