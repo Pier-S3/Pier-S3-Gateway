@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go (build, vet, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test (with coverage)
+        run: go test ./internal/... ./cmd/... -count=1 -coverprofile=coverage.out
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+  web:
+    name: Web UI (types, lint, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test
+      - name: Build
+        run: npm run build
+
+  helm:
+    name: Helm chart lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Lint chart
+        run: helm lint deployments/helm/pier-s3-gateway
+      - name: Render (ESO and plain-secret modes)
+        run: |
+          helm template pier-s3-gateway deployments/helm/pier-s3-gateway >/dev/null
+          helm template pier-s3-gateway deployments/helm/pier-s3-gateway \
+            --set externalSecrets.enabled=false \
+            --set secret.create=true >/dev/null
+
+  # Future: an auth conformance matrix that boots Dex / Authentik / Zitadel via
+  # docker compose and runs the same OIDC e2e against each (see
+  # docs/auth-providers.md, "Cross-cutting / Conformance tests"). Omitted here
+  # because booting full IdPs is heavy and flaky for every push; track as its
+  # own workflow once Phase 2 provider profiles land.

@@ -118,3 +118,26 @@ clean: ## Очистить артефакты сборки
 
 run: backend ## Собрать и запустить локально
 	./bin/$(BINARY)
+
+# ─── Helm ──────────────────────────────────────────────
+HELM           := helm
+HELM_RELEASE   := pier-s3-gateway
+HELM_NAMESPACE := pier-s3-gateway
+HELM_CHART     := deployments/helm/pier-s3-gateway
+
+helm-lint: ## Линтинг Helm-чарта
+	$(HELM) lint $(HELM_CHART)
+
+helm-template: ## Рендер шаблонов чарта
+	$(HELM) template $(HELM_RELEASE) $(HELM_CHART)
+
+helm-install: ## Установить чарт в кластер
+	$(HELM) install $(HELM_RELEASE) $(HELM_CHART) \
+		--namespace $(HELM_NAMESPACE) --create-namespace
+
+helm-upgrade: ## Обновить (или установить) релиз
+	$(HELM) upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
+		--namespace $(HELM_NAMESPACE) --create-namespace
+
+helm-uninstall: ## Удалить релиз
+	$(HELM) uninstall $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
