@@ -29,6 +29,7 @@ const ru = {
   nav: {
     buckets: 'Бакеты',
     allBuckets: 'Все бакеты',
+    menu: 'Открыть меню',
   },
   theme: {
     label: 'Тема',

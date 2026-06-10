@@ -20,12 +20,12 @@ export default function LanguageSwitcher() {
       labelRender={({ label }) => (
         <Space size={6}>
           <GlobalOutlined />
-          {label}
+          <span className="lang-label">{label}</span>
         </Space>
       )}
       popupMatchSelectWidth={false}
       variant="borderless"
-      style={{ minWidth: 124 }}
+      className="lang-select"
       aria-label={t('common.language')}
     />
   );

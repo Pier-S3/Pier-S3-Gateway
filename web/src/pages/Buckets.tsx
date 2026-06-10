@@ -1,10 +1,8 @@
 import { useEffect } from "react";
-import { Typography, Alert } from 'antd';
+import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useBucketsStore } from '../store/buckets';
 import BucketList from '../components/BucketList';
-
-const { Title } = Typography;
 
 export default function Buckets() {
   const { t } = useTranslation();
@@ -14,7 +12,7 @@ export default function Buckets() {
 
   return (
     <div>
-      <Title level={3} style={{ marginTop: 0 }}>{t('buckets.title')}</Title>
+      <h1 className="page-title">{t('buckets.title')}</h1>
       {error && (
         <Alert
           message={t('errors.loadBuckets')}

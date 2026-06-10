@@ -28,6 +28,7 @@ const it = {
   nav: {
     buckets: 'Bucket',
     allBuckets: 'Tutti i bucket',
+    menu: 'Apri menu',
   },
   theme: {
     label: 'Tema',

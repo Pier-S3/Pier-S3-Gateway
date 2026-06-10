@@ -175,9 +175,11 @@ export default function ObjectBrowser({
       ellipsis: true,
       render: (name: string, record) => (
         <span className="file-name-cell">
-          {record.isPrefix
-            ? <FolderFilled className="folder-icon" />
-            : <FileOutlined className="file-icon" />}
+          <span className={`file-icon-wrap ${record.isPrefix ? 'folder' : 'file'}`}>
+            {record.isPrefix
+              ? <FolderFilled />
+              : <FileOutlined />}
+          </span>
           <span>{name}</span>
         </span>
       ),
@@ -188,14 +190,18 @@ export default function ObjectBrowser({
       key: 'lastModified',
       sorter: (a, b) => a.lastModified.localeCompare(b.lastModified),
       width: 220,
-      render: (value: string) => value || t('common.dash'),
+      render: (value: string) => (
+        <span className="col-mono">{value || t('common.dash')}</span>
+      ),
     },
     {
       title: t('common.size'),
       dataIndex: 'size',
       key: 'size',
       sorter: (a, b) => a.size - b.size,
-      render: (size: number, record) => record.isPrefix ? t('common.dash') : formatBytes(size),
+      render: (size: number, record) => (
+        <span className="col-mono">{record.isPrefix ? t('common.dash') : formatBytes(size)}</span>
+      ),
       width: 130,
     },
     {

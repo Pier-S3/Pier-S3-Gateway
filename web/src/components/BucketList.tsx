@@ -1,10 +1,8 @@
-import { List, Card, Skeleton, Typography, Empty, Tooltip } from 'antd';
+import { List, Card, Skeleton, Empty, Tooltip } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { BucketInfo } from '../store/buckets';
 import { useNavigate } from 'react-router-dom';
-
-const { Text } = Typography;
 
 interface Props {
   buckets: BucketInfo[];
@@ -44,54 +42,59 @@ export default function BucketList({ buckets, loading }: Props) {
 
   return (
     <List
-      grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4 }}
+      grid={{ gutter: 16, xs: 1, sm: 2, md: 2, lg: 3, xl: 3, xxl: 4 }}
       dataSource={buckets}
-      renderItem={(bucket) => (
-        <List.Item>
-          <Card
-            hoverable
-            className="bucket-card"
-            role="button"
-            tabIndex={0}
-            aria-label={t('common.openFolder', { name: bucket.name })}
-            onClick={() => navigate(`/buckets/${bucket.name}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate(`/buckets/${bucket.name}`);
-              }
-            }}
-            title={
-              <Tooltip title={bucket.name} mouseEnterDelay={0.4}>
-                <span className="bucket-title">{bucket.name}</span>
-              </Tooltip>
-            }
-          >
-            <div style={{ textAlign: 'center', padding: 'var(--space-3) 0 var(--space-2)' }}>
-              <FolderOpenOutlined style={{ fontSize: 44, color: 'var(--dbx-blue)' }} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              {bucket.object_count !== undefined && (
-                <Text type="secondary">{t('common.objects', { count: bucket.object_count })}</Text>
-              )}
-              {bucket.size_bytes !== undefined && (
-                <Text type="secondary" style={{ marginLeft: 'var(--space-3)' }}>{formatBytes(bucket.size_bytes, dash)}</Text>
-              )}
-            </div>
-            {/* Access is a low-emphasis, isolated footer block - not a loud chip
-                next to the name. */}
-            <div className="bucket-access">
-              <span className="bucket-access-label">{t('buckets.access')}</span>
-              {(() => {
-                const badge = accessBadge(bucket.permissions, t);
-                return (
-                  <span className={`bucket-access-value ${badge.cls}`}>{badge.label}</span>
-                );
-              })()}
-            </div>
-          </Card>
-        </List.Item>
-      )}
+      renderItem={(bucket) => {
+        const badge = accessBadge(bucket.permissions, t);
+        const hasStats =
+          bucket.object_count !== undefined || bucket.size_bytes !== undefined;
+        return (
+          <List.Item>
+            <Card
+              hoverable
+              className="bucket-card"
+              role="button"
+              tabIndex={0}
+              aria-label={t('common.openFolder', { name: bucket.name })}
+              onClick={() => navigate(`/buckets/${bucket.name}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/buckets/${bucket.name}`);
+                }
+              }}
+            >
+              {/* Compact row-card: icon anchor, name (grows), access pill - one
+                  baseline, no dead space, and stats slot in as a second line
+                  when a backend supplies object_count / size_bytes. */}
+              <span className="bucket-icon-tile">
+                <FolderOpenOutlined />
+              </span>
+              <div className="bucket-card-info">
+                <Tooltip title={bucket.name} mouseEnterDelay={0.4}>
+                  <span className="bucket-card-name">{bucket.name}</span>
+                </Tooltip>
+                {hasStats && (
+                  <div className="bucket-stats">
+                    {bucket.object_count !== undefined && (
+                      <span>{t('common.objects', { count: bucket.object_count })}</span>
+                    )}
+                    {bucket.size_bytes !== undefined && (
+                      <span>{formatBytes(bucket.size_bytes, dash)}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span
+                className={`bucket-access-value ${badge.cls}`}
+                title={`${t('buckets.access')}: ${badge.label}`}
+              >
+                {badge.label}
+              </span>
+            </Card>
+          </List.Item>
+        );
+      }}
     />
   );
 }

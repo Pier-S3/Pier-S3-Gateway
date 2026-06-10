@@ -53,10 +53,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 function applyCssVars(
   config: Parameters<typeof computeCssVars>[0],
   scheme: EffectiveScheme,
+  preset: PresetTheme | null,
 ): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  const vars = computeCssVars(config);
+  const vars = computeCssVars(config, scheme, preset);
   (Object.keys(vars) as (keyof typeof vars)[]).forEach((key) => {
     root.style.setProperty(key, vars[key]);
   });
@@ -99,8 +100,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Mirror the resolved palette into CSS variables + data-theme attribute.
   useEffect(() => {
-    applyCssVars(themeConfig, effectiveScheme);
-  }, [themeConfig, effectiveScheme]);
+    applyCssVars(themeConfig, effectiveScheme, activePreset);
+  }, [themeConfig, effectiveScheme, activePreset]);
 
   const persistSelection = useCallback((next: ThemeSelection) => {
     setSelection(next);

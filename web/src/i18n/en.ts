@@ -28,6 +28,7 @@ const en = {
   nav: {
     buckets: 'Buckets',
     allBuckets: 'All buckets',
+    menu: 'Open menu',
   },
   theme: {
     label: 'Theme',

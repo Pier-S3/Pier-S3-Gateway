@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { Upload, Button, message, Progress } from 'antd';
+import { Upload, message, Progress } from 'antd';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
-import { CloudUploadOutlined, UploadOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { apiClient, buildObjectPath, errorMessage } from '../api/client';
 
@@ -63,15 +63,8 @@ export default function UploadZone({ bucket, prefix, onUploaded }: Props) {
 
   return (
     <div className="dbx-dropzone" style={{ marginBottom: 16 }}>
-      <Upload
-        multiple
-        customRequest={(options) => { void customUpload(options); }}
-        showUploadList={false}
-      >
-        <Button type="primary" icon={<UploadOutlined />} size="large" style={{ marginBottom: 12 }}>
-          {t('browser.upload')}
-        </Button>
-      </Upload>
+      {/* A single upload affordance: the drop area is itself click-to-select and
+          drag-and-drop, so a separate button would just duplicate it. */}
       <Dragger
         multiple
         customRequest={(options) => { void customUpload(options); }}

@@ -41,7 +41,10 @@ function createUserManager(): UserManager {
     redirect_uri: `${window.location.origin}/callback`,
     post_logout_redirect_uri: window.location.origin,
     response_type: 'code',
-    scope: 'openid profile',
+    // Scope is provider-configurable: Keycloak carries roles without an extra
+    // scope, but other IdPs gate the groups/email claims behind explicit scopes
+    // (e.g. Dex needs "groups", many need "email"). Override via VITE_OIDC_SCOPE.
+    scope: import.meta.env.VITE_OIDC_SCOPE || 'openid profile',
     automaticSilentRenew: true,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
   });

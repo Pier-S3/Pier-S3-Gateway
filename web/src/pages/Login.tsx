@@ -29,11 +29,13 @@ export default function Login() {
           <Divider type="vertical" style={{ margin: 0 }} />
           <LanguageSwitcher />
         </div>
-        <div className="login-logo" style={{ marginBottom: 8 }}>
-          <Logo size={48} />
+        <div className="login-logo-tile">
+          <Logo size={34} />
         </div>
-        <Title level={3} style={{ marginTop: 8 }}>{t('auth.title')}</Title>
-        <Paragraph type="secondary">{t('auth.subtitle')}</Paragraph>
+        <Title level={3} style={{ marginTop: 20, marginBottom: 4, letterSpacing: '-0.02em' }}>
+          {t('auth.title')}
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 28 }}>{t('auth.subtitle')}</Paragraph>
         <Button
           type="primary"
           icon={<LoginOutlined />}

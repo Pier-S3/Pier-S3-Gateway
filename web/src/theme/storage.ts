@@ -12,9 +12,9 @@ export const SELECTION_STORAGE_KEY = 'pier.theme.selection';
 /** Default selection when nothing is stored. */
 export const DEFAULT_SELECTION: ThemeSelection = { kind: 'mode', mode: 'system' };
 
-/** Dropbox default light token values. */
-export const DBX_PRIMARY = '#0061FF';
-export const DBX_RADIUS = 8;
+/** Default brand token values (modern indigo accent, softened corners). */
+export const DBX_PRIMARY = '#4F46E5';
+export const DBX_RADIUS = 10;
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;

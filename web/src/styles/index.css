@@ -1,28 +1,40 @@
 /*
  * Theme variables.
  *
- * These are the light-theme defaults (the original Dropbox palette). At runtime
- * ThemeProvider overrides every `--dbx-*` value on <html> from the active AntD
- * theme (light, dark, or a custom theme) and sets `data-theme="light|dark"`.
- * The `[data-theme="dark"]` block below is a static fallback so the first paint
- * (before JS hydrates) and any non-JS path still render a coherent dark surface.
+ * These are the light-theme defaults. At runtime ThemeProvider overrides every
+ * `--dbx-*` value on <html> from the active AntD theme (light, dark, or a custom
+ * preset) and sets `data-theme="light|dark"`. The `[data-theme="dark"]` block
+ * below is a static fallback so the first paint (before JS hydrates) and any
+ * non-JS path still render a coherent dark surface.
+ *
+ * The design language is a modern "infrastructure console": a refined slate
+ * palette, layered elevation, an accent-driven brand gradient, and a monospace
+ * face for technical values (sizes, dates, object keys).
  */
 :root {
-  --dbx-blue: #0061ff;
-  --dbx-border: #e7e7e7;
-  --dbx-bg: #fafafa;
-  --dbx-text: #1e1919;
-  --dbx-muted: #637282;
-  /* Surfaces and accents that used to be hardcoded in component CSS. */
+  --dbx-blue: #4f46e5;
+  --dbx-blue-hover: #6366f1;
+  --dbx-blue-soft: #eef2ff;
+  --dbx-border: #eaeef4;
+  --dbx-border-strong: #cbd5e1;
+  --dbx-bg: #f6f8fb;
+  --dbx-text: #0f172a;
+  --dbx-muted: #64748b;
   --dbx-surface: #ffffff;
-  --dbx-row-hover: #f3f7ff;
-  --dbx-dropzone-hover: #f7faff;
+  --dbx-surface-2: #f1f5f9;
+  --dbx-elevated: #ffffff;
+  --dbx-row-hover: #f1f5f9;
+  --dbx-dropzone-hover: #eef2ff;
+
+  --dbx-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --dbx-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  --dbx-shadow-lg: 0 18px 44px rgba(15, 23, 42, 0.14);
+  --dbx-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #4338ca 100%);
+  --dbx-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /*
    * Spacing scale (4/8-pt grid). Use these instead of ad-hoc pixel numbers so
    * gaps, paddings and margins stay on a consistent rhythm across the app.
-   * --space-1: 4px   --space-2: 8px   --space-3: 12px
-   * --space-4: 16px  --space-5: 24px  --space-6: 32px
    */
   --space-1: 4px;
   --space-2: 8px;
@@ -32,17 +44,31 @@
   --space-6: 32px;
   /* Minimum comfortable hit area for icon-only controls. */
   --control-min: 36px;
+  /* Shared radius rhythm. */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
 }
 
 /* Static dark fallback (runtime values from ThemeProvider take precedence). */
 [data-theme='dark'] {
-  --dbx-border: #303030;
-  --dbx-bg: #141414;
-  --dbx-text: rgba(255, 255, 255, 0.85);
-  --dbx-muted: rgba(255, 255, 255, 0.45);
-  --dbx-surface: #1d1d1d;
-  --dbx-row-hover: #1f1f1f;
-  --dbx-dropzone-hover: #111a2c;
+  --dbx-blue: #6366f1;
+  --dbx-blue-hover: #818cf8;
+  --dbx-blue-soft: #1e1b4b;
+  --dbx-border: #202a42;
+  --dbx-border-strong: #334155;
+  --dbx-bg: #0b1120;
+  --dbx-text: rgba(241, 245, 249, 0.92);
+  --dbx-muted: #94a3b8;
+  --dbx-surface: #141b2e;
+  --dbx-surface-2: #1b2540;
+  --dbx-elevated: #1b2540;
+  --dbx-row-hover: #1b2540;
+  --dbx-dropzone-hover: #161f38;
+
+  --dbx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --dbx-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --dbx-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -57,51 +83,116 @@ body,
 }
 
 body {
-  font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--dbx-bg);
   color: var(--dbx-text);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* App shell */
+/* Numeric/technical values read better in a tabular monospace. */
+.dbx-mono {
+  font-family: var(--dbx-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ===========================================================================
+   App shell
+   ========================================================================= */
 .app-sider {
   background: var(--dbx-surface) !important;
   border-right: 1px solid var(--dbx-border);
+}
+
+/* When AntD collapses the Sider to zero (below the `lg` breakpoint) it adds the
+   `zero-width` class, but the inline width can briefly lag on a hard reload onto
+   a deep link - which would squeeze the header. Pin the collapsed state to 0 so
+   the layout is deterministic; navigation on mobile goes through the Drawer. */
+.app-sider.ant-layout-sider-zero-width {
+  flex: 0 0 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  overflow: hidden;
+  border-right: none;
 }
 
 .app-logo {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  font-size: 18px;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--dbx-text);
 }
 
-.app-logo .anticon,
-.app-logo svg {
-  color: var(--dbx-blue);
-  font-size: 22px;
+/* The logo sits inside a small gradient "app tile" for a recognizable mark. */
+.app-logo .logo-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--dbx-gradient);
+  color: #fff;
+  box-shadow: var(--dbx-shadow-sm);
+  flex: none;
+}
+
+.app-logo .logo-tile svg {
+  color: #fff;
 }
 
 .app-header {
-  background: var(--dbx-surface);
+  background: color-mix(in srgb, var(--dbx-surface) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--dbx-border);
-  padding: 0 var(--space-5);
+  padding: 0 var(--space-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   /* Auto height so the cluster can wrap onto a second line on narrow widths
      instead of overflowing; keeps a comfortable single-row height otherwise. */
-  min-height: 60px;
+  min-height: 64px;
   height: auto;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* Left header group: hamburger (mobile only) + page title. */
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The hamburger only exists below the Sider's `lg` breakpoint, where the Sider
+   has collapsed to zero width. Specificity (.app-header .menu-toggle) reliably
+   beats AntD's own button display rule without !important. */
+.app-header .menu-toggle {
+  display: none;
+}
+
+@media (max-width: 991px) {
+  .app-header .menu-toggle {
+    display: inline-flex;
+    width: var(--control-min);
+    height: var(--control-min);
+  }
 }
 
 .app-header-title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   /* Long bucket names truncate rather than push the controls off-screen. */
   min-width: 0;
   overflow: hidden;
@@ -109,10 +200,40 @@ body {
   white-space: nowrap;
 }
 
+/* Mobile nav drawer shares the Sider surface; remove the body padding so the
+   logo/menu sit flush like in the Sider. */
+.app-nav-drawer .ant-drawer-body {
+  background: var(--dbx-surface);
+}
+
+/* Popups (theme / language / user menus, selects) get the same hairline-bordered
+   elevated-panel treatment as cards and tables, so floating surfaces read as part
+   of the same system rather than as bare AntD overlays. */
+.ant-dropdown-menu,
+.ant-select-dropdown {
+  border: 1px solid var(--dbx-border);
+}
+
+/* Language switcher: a comfortable width on desktop; on phones it collapses to
+   just the globe icon (mirroring the username) so the page title keeps room. */
+.lang-select {
+  min-width: 124px;
+}
+
+@media (max-width: 480px) {
+  .lang-select {
+    min-width: 0;
+  }
+
+  .lang-label {
+    display: none;
+  }
+}
+
 .app-header-right {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -125,17 +246,18 @@ body {
   gap: var(--space-2);
   height: var(--control-min);
   padding: 0 var(--space-2);
-  border: none;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
   color: var(--dbx-text);
   cursor: pointer;
   font: inherit;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .user-menu-trigger:hover {
   background: var(--dbx-row-hover);
+  border-color: var(--dbx-border);
 }
 
 .user-menu-trigger:focus-visible {
@@ -145,6 +267,7 @@ body {
 
 .user-menu-name {
   max-width: 160px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -164,17 +287,40 @@ body {
 }
 
 .app-content {
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-6);
   background: var(--dbx-bg);
 }
 
 .sider-nav-label {
-  padding: var(--space-2) var(--space-5);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  padding: var(--space-4) var(--space-5) var(--space-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dbx-muted);
+}
+
+/* Pill-style active menu item with an accent leading bar. */
+.app-sider .ant-menu-light.ant-menu-inline .ant-menu-item-selected,
+.app-sider .ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
+  background: var(--dbx-blue-soft);
+  font-weight: 600;
+}
+
+.app-sider .ant-menu-inline .ant-menu-item {
+  position: relative;
+}
+
+.app-sider .ant-menu-inline .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 3px 3px 0;
+  background: var(--dbx-blue);
 }
 
 /* On phones the header padding tightens and the cluster gap relaxes so the
@@ -193,22 +339,72 @@ body {
   }
 }
 
-/* Bucket cards */
+/* Page heading: a tighter, more confident title style. */
+.page-title {
+  margin: 0 0 var(--space-5);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--dbx-text);
+}
+
+/* ===========================================================================
+   Bucket cards
+   ========================================================================= */
 .bucket-card {
   border: 1px solid var(--dbx-border);
-  border-radius: 8px;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  border-radius: var(--radius);
+  background: var(--dbx-surface);
+  box-shadow: var(--dbx-shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
 }
 
 .bucket-card:hover {
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: var(--dbx-shadow);
+  transform: translateY(-3px);
+  border-color: var(--dbx-border-strong);
 }
 
-/* Long bucket names truncate with an ellipsis inside the card title; the full
-   name is available via Tooltip on hover. */
-.bucket-card .bucket-title {
+/* Compact row-card layout: icon (anchor) · info (grows) · access pill. Aligned
+   on a single baseline with no card head / dividers, so there is no dead space
+   regardless of how little metadata a bucket has. */
+.bucket-card .ant-card-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4);
+}
+
+/* The folder mark sits in a soft accent tile anchoring the row on the left. */
+.bucket-icon-tile {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--dbx-blue-soft);
+  color: var(--dbx-blue);
+}
+
+.bucket-icon-tile .anticon {
+  font-size: 22px;
+}
+
+/* The text block grows to fill the row and truncates long names. */
+.bucket-card-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bucket-card-name {
   display: block;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--dbx-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -219,67 +415,99 @@ body {
   outline-offset: 2px;
 }
 
-/* Access is shown in its own low-emphasis footer block, separated by a hairline
-   rule - intentionally small and muted so it never competes with the name. */
-.bucket-access {
+/* Optional second line: object count / size (only when a backend supplies it). */
+.bucket-stats {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--dbx-border);
-}
-
-.bucket-access-label {
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  gap: var(--space-3);
+  margin-top: 2px;
+  font-family: var(--dbx-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   color: var(--dbx-muted);
 }
 
+/* Access badges: compact, pill-shaped, with a leading status dot. */
 .bucket-access-value {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 16px;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
   color: var(--dbx-muted);
-  background: var(--dbx-row-hover);
+  background: var(--dbx-surface-2);
+  border: 1px solid transparent;
 }
 
-/* A whisper of color to distinguish read-only from read-write, without shouting. */
+.bucket-access-value::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
 .bucket-access-value.rw {
-  color: #237804;
-  background: rgba(82, 196, 26, 0.1);
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.22);
 }
 
 .bucket-access-value.ro {
-  color: #0958d9;
-  background: rgba(22, 119, 255, 0.1);
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.22);
 }
 
 /* Write-only (upload): amber - distinct from read (blue) and read/write (green). */
 .bucket-access-value.wo {
-  color: #ad6800;
-  background: rgba(250, 173, 20, 0.12);
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.24);
 }
 
-/* File table */
+[data-theme='dark'] .bucket-access-value.rw {
+  color: #4ade80;
+}
 
-/* Give the whole table a single coherent rounded border. AntD only rounds the
-   header's top corners by default, which left the bottom edge square against a
-   borderless body - looked unfinished. Wrap it in a hairline border and round
-   all four corners. */
+[data-theme='dark'] .bucket-access-value.ro {
+  color: #60a5fa;
+}
+
+[data-theme='dark'] .bucket-access-value.wo {
+  color: #fbbf24;
+}
+
+/* ===========================================================================
+   File table
+   ========================================================================= */
+
+/* Give the whole table a single coherent rounded border, wrapped on a surface
+   with a soft shadow so it reads as an elevated panel. */
 .file-table .ant-table {
   border: 1px solid var(--dbx-border);
-  border-radius: 8px;
+  border-radius: var(--radius);
+  box-shadow: var(--dbx-shadow-sm);
 }
 
 /* Clip the header's own top rounding to the wrapper radius so corners line up. */
 .file-table .ant-table-container {
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
+}
+
+/* Uppercased, muted column headers in the "console table" idiom. */
+.file-table .ant-table-thead > tr > th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dbx-muted);
+  background: var(--dbx-surface-2);
 }
 
 /* Comfortable horizontal padding so cell content is not jammed against the
@@ -289,7 +517,7 @@ body {
    raise specificity and reliably override it. Align to the spacing scale. */
 .file-table.ant-table-wrapper .ant-table.ant-table-middle .ant-table-thead > tr > th,
 .file-table.ant-table-wrapper .ant-table.ant-table-middle .ant-table-tbody > tr > td {
-  padding: 12px 18px;
+  padding: 13px 18px;
 }
 
 /* Drop the doubled bottom border under the last row (the wrapper provides it). */
@@ -303,6 +531,14 @@ body {
 
 .file-table .ant-table-tbody > tr:hover > td {
   background: var(--dbx-row-hover);
+}
+
+/* Technical columns (modified / size) render in tabular monospace. */
+.file-table .col-mono {
+  font-family: var(--dbx-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: var(--dbx-muted);
 }
 
 /* Visible keyboard focus ring on rows so the primary action (open folder /
@@ -320,7 +556,7 @@ body {
    touch. The folder name carries a subtle affordance on hover. */
 .file-table .row-folder:hover .file-name-cell > span:last-child {
   text-decoration: underline;
-  text-decoration-color: var(--dbx-border);
+  text-decoration-color: var(--dbx-border-strong);
 }
 
 /* Row action controls: the download icon-button is revealed on row hover/focus
@@ -355,6 +591,7 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
+  font-weight: 500;
 }
 
 /* Truncate long file/folder names instead of forcing the row wider. */
@@ -364,24 +601,39 @@ body {
   white-space: nowrap;
 }
 
-.file-name-cell .anticon {
-  font-size: 18px;
+/* File/folder marks sit in a small tinted square for a crisper, scannable list. */
+.file-name-cell .file-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: none;
 }
 
-.file-name-cell .folder-icon {
+.file-name-cell .file-icon-wrap .anticon {
+  font-size: 16px;
+}
+
+.file-name-cell .file-icon-wrap.folder {
+  background: var(--dbx-blue-soft);
   color: var(--dbx-blue);
 }
 
-.file-name-cell .file-icon {
+.file-name-cell .file-icon-wrap.file {
+  background: var(--dbx-surface-2);
   color: var(--dbx-muted);
 }
 
-/* Upload zone (Dropbox-style dashed drop area) */
+/* ===========================================================================
+   Upload zone
+   ========================================================================= */
 .dbx-dropzone .ant-upload-drag {
-  border: 2px dashed var(--dbx-border);
-  border-radius: 12px;
+  border: 1.5px dashed var(--dbx-border-strong);
+  border-radius: var(--radius);
   background: var(--dbx-surface);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
 
 .dbx-dropzone .ant-upload-drag:hover {
@@ -391,26 +643,80 @@ body {
 
 .dbx-dropzone .ant-upload-drag-icon .anticon {
   color: var(--dbx-blue);
-  font-size: 40px;
+  font-size: 38px;
 }
 
-/* Login */
+/* ===========================================================================
+   Login
+   ========================================================================= */
 .login-wrap {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--dbx-bg);
   padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+  background: var(--dbx-bg);
+}
+
+/* A soft, ambient accent aurora behind the card - depth without distraction. */
+.login-wrap::before,
+.login-wrap::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.4;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.login-wrap::before {
+  width: 420px;
+  height: 420px;
+  top: -120px;
+  left: -80px;
+  background: var(--dbx-blue);
+}
+
+.login-wrap::after {
+  width: 360px;
+  height: 360px;
+  bottom: -120px;
+  right: -60px;
+  background: var(--dbx-blue-hover);
+  opacity: 0.28;
 }
 
 .login-card {
+  position: relative;
+  z-index: 1;
   width: 420px;
   max-width: 100%;
   text-align: center;
   border: 1px solid var(--dbx-border);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-lg);
+  background: var(--dbx-surface);
+  box-shadow: var(--dbx-shadow-lg);
+}
+
+/* The brand mark on the login screen lives in the gradient app tile. */
+.login-logo-tile {
+  width: 64px;
+  height: 64px;
+  margin: var(--space-2) auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--dbx-gradient);
+  color: #fff;
+  box-shadow: var(--dbx-shadow);
+}
+
+.login-logo-tile svg {
+  color: #fff;
 }
 
 /* Theme/language controls live in their own top row so they never overlap the
@@ -430,16 +736,6 @@ body {
   }
 }
 
-.login-logo {
-  margin-top: 4px;
-}
-
-.login-logo .anticon,
-.login-logo svg {
-  font-size: 48px;
-  color: var(--dbx-blue);
-}
-
 .center-spin {
   display: flex;
   justify-content: center;
@@ -447,7 +743,9 @@ body {
   min-height: 60vh;
 }
 
-/* File preview */
+/* ===========================================================================
+   File preview
+   ========================================================================= */
 .preview-body {
   max-height: 72vh;
   overflow: auto;
@@ -465,6 +763,7 @@ body {
   max-width: 100%;
   max-height: 68vh;
   margin: 0 auto;
+  border-radius: var(--radius-sm);
 }
 
 .preview-audio {
@@ -475,21 +774,39 @@ body {
   width: 100%;
   height: 68vh;
   border: 1px solid var(--dbx-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--dbx-surface);
 }
 
 .preview-text {
   margin: 0;
-  padding: var(--space-3);
+  padding: var(--space-4);
   max-height: 68vh;
   overflow: auto;
-  background: var(--dbx-row-hover);
+  background: var(--dbx-surface-2);
   border: 1px solid var(--dbx-border);
-  border-radius: 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  border-radius: var(--radius-sm);
+  font-family: var(--dbx-mono);
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ===========================================================================
+   Motion
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .bucket-card:hover {
+    transform: none;
+  }
 }

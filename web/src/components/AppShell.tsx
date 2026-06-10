@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Typography, Divider, theme } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Typography, Divider, Drawer, Button, theme } from 'antd';
 import {
   FolderOutlined,
   DatabaseOutlined,
   LogoutOutlined,
   DownOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { buckets, fetchBuckets } = useBucketsStore();
   const { token } = theme.useToken();
+  // Mobile navigation drawer (the Sider auto-collapses below `lg`).
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (buckets.length === 0) fetchBuckets();
@@ -46,13 +49,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     })),
   ];
 
+  // Navigate, then close the mobile drawer (a no-op on desktop where it is
+  // already closed) so a selection on a phone doesn't leave the overlay open.
   const onMenuClick = ({ key }: { key: string }) => {
     if (key === 'all') {
       navigate('/buckets');
     } else if (key.startsWith('bucket:')) {
       navigate(`/buckets/${key.slice('bucket:'.length)}`);
     }
+    setMobileNavOpen(false);
   };
+
+  // Shared nav: brand mark, section label, and the bucket menu. Rendered both in
+  // the desktop Sider and the mobile Drawer so the two never drift apart.
+  const navContent = (
+    <>
+      <div className="app-logo">
+        <span className="logo-tile">
+          <Logo size={22} />
+        </span>
+        <span>{t('common.appName')}</span>
+      </div>
+      <div className="sider-nav-label">{t('nav.buckets')}</div>
+      <Menu
+        mode="inline"
+        selectedKeys={[selectedKey]}
+        items={menuItems}
+        onClick={onMenuClick}
+        style={{ borderInlineEnd: 'none' }}
+      />
+    </>
+  );
 
   const initial = user?.username?.charAt(0).toUpperCase() ?? '?';
 
@@ -70,22 +97,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider className="app-sider" width={240} breakpoint="lg" collapsedWidth={0}>
-        <div className="app-logo">
-          <Logo size={24} />
-          <span>{t('common.appName')}</span>
-        </div>
-        <div className="sider-nav-label">{t('nav.buckets')}</div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={onMenuClick}
-          style={{ borderInlineEnd: 'none' }}
-        />
+        {navContent}
       </Sider>
+      {/* Mobile-only navigation drawer, opened from the header hamburger. */}
+      <Drawer
+        placement="left"
+        width={264}
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        closable={false}
+        rootClassName="app-nav-drawer"
+        styles={{ body: { padding: 0 } }}
+      >
+        {navContent}
+      </Drawer>
       <Layout>
         <Header className="app-header">
-          <div className="app-header-title">{headerTitle}</div>
+          <div className="app-header-left">
+            <Button
+              type="text"
+              className="menu-toggle"
+              icon={<MenuOutlined />}
+              aria-label={t('nav.menu')}
+              onClick={() => setMobileNavOpen(true)}
+            />
+            <div className="app-header-title">{headerTitle}</div>
+          </div>
           <div className="app-header-right">
             <ThemeSwitcher />
             <Divider type="vertical" style={{ margin: 0 }} />
