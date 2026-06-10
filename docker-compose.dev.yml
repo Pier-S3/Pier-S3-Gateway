@@ -1,7 +1,9 @@
 services:
-  # SeaweedFS — S3-совместимое хранилище
+  # SeaweedFS — S3-совместимое хранилище.
+  # Pinned to a release tag (not :latest) for reproducible dev builds.
+  # NOTE: deployments/seaweedfs-s3.json holds admin/admin DEV-ONLY credentials.
   seaweedfs:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:3.69
     # -s3.config defines an S3 identity. Recent images enable S3 auth by
     # default (Auth enabled / 0 keys -> InvalidAccessKeyId), so we must supply
     # credentials that match the gateway's S3_ACCESS_KEY/S3_SECRET_KEY.
@@ -49,6 +51,9 @@ services:
       KEYCLOAK_CLIENT_ID: s3-proxy
       KEYCLOAK_CLIENT_SECRET: ""
       KEYCLOAK_JWKS_URL: http://keycloak:8180/realms/master/protocol/openid-connect/certs
+      # DEV ONLY: the local Keycloak speaks plaintext http. Production requires
+      # https issuer/JWKS URLs; this flag relaxes that check for local dev.
+      OIDC_ALLOW_INSECURE: "true"
       LISTEN_S3_ADDR: ":8080"
       LISTEN_UI_ADDR: ":8081"
       LOG_LEVEL: debug

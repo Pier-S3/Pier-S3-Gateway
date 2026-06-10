@@ -1,0 +1,41 @@
+# LDAP seed for the Pier + Dex demo (bitnami/openldap loads *.ldif from
+# /ldifs at first boot). Defines one user and three groups whose CNs follow
+# Pier's <bucket>-<policy> ACL convention, so a successful Dex login yields a
+# token whose `groups` claim grants real bucket access.
+#
+# User:  alice / password
+# Grants: reports-ro (read reports), uploads-wo (upload to uploads),
+#         *-ro       (read-only across ALL buckets - auditor wildcard)
+
+dn: ou=people,dc=example,dc=org
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=alice,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+uid: alice
+cn: Alice Auditor
+sn: Auditor
+mail: alice@example.org
+# {SSHA} hash of "password"; bitnami/openldap also accepts userPassword in
+# cleartext on seed and will hash it. Cleartext kept for demo clarity.
+userPassword: password
+
+dn: cn=reports-ro,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: reports-ro
+member: uid=alice,ou=people,dc=example,dc=org
+
+dn: cn=uploads-wo,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: uploads-wo
+member: uid=alice,ou=people,dc=example,dc=org
+
+dn: cn=*-ro,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: *-ro
+member: uid=alice,ou=people,dc=example,dc=org

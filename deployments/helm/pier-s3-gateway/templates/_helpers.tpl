@@ -68,3 +68,34 @@ Resolved image reference (tag defaults to the chart appVersion).
 {{- $tag := default .Chart.AppVersion .Values.image.tag -}}
 {{- printf "%s:%s" .Values.image.repository $tag -}}
 {{- end -}}
+
+{{/*
+Render NetworkPolicy egress peers ("to:" list) for a target. Pass a dict with a
+"target" key holding { namespaceLabels, podLabels, ipBlock }. Preference:
+ipBlock > namespace/pod selectors > fall back to namespaceSelector: {} (any
+namespace) - the broad fallback is intentionally last so a configured target
+always wins, and it emits a comment so an unconfigured policy is visible in the
+rendered manifest.
+*/}}
+{{- define "pier-s3-gateway.egressPeers" -}}
+{{- $t := .target -}}
+{{- if $t.ipBlock }}
+- ipBlock:
+    cidr: {{ $t.ipBlock }}
+{{- else if or $t.namespaceLabels $t.podLabels }}
+- {{ if $t.namespaceLabels -}}
+  namespaceSelector:
+    matchLabels:
+      {{- toYaml $t.namespaceLabels | nindent 6 }}
+  {{- end }}
+  {{- if $t.podLabels }}
+  podSelector:
+    matchLabels:
+      {{- toYaml $t.podLabels | nindent 6 }}
+  {{- end }}
+{{- else }}
+# WARNING: egress target unscoped (any namespace). Set namespaceLabels/podLabels
+# or ipBlock in values to restrict the blast radius.
+- namespaceSelector: {}
+{{- end }}
+{{- end -}}

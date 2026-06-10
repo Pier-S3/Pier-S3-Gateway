@@ -30,15 +30,15 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Keycloak (HTTPS)
+    # Keycloak (HTTPS) - scoped to the configured target (see values).
     - to:
-        - namespaceSelector: {}
+        {{- include "pier-s3-gateway.egressPeers" (dict "target" .Values.networkPolicy.keycloakEgress) | nindent 8 }}
       ports:
         - port: {{ .Values.networkPolicy.keycloakPort }}
           protocol: TCP
-    # SeaweedFS (S3)
+    # SeaweedFS (S3) - scoped to the configured target (see values).
     - to:
-        - namespaceSelector: {}
+        {{- include "pier-s3-gateway.egressPeers" (dict "target" .Values.networkPolicy.seaweedfsEgress) | nindent 8 }}
       ports:
         - port: {{ .Values.networkPolicy.seaweedfsPort }}
           protocol: TCP

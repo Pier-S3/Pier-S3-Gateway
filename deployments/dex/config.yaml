@@ -1,0 +1,55 @@
+# Dex configuration for the Pier multi-provider end-to-end profile.
+#
+# Demonstrates the roadmap's flagship story: Dex brokers an LDAP directory into
+# OIDC, emitting a flat `groups` array that maps straight onto Pier's
+# <bucket>-<ro|rw|wo> (plus `*`) ACL convention. The gateway needs NO code
+# changes - only OIDC_* configuration (see docker-compose.dex.yml).
+#
+# issuer is the BROWSER-facing URL: tokens carry iss=http://localhost:5556/dex,
+# so the gateway must set OIDC_ISSUER to the same value (JWKS is fetched in-
+# cluster via the service name). Same browser-vs-cluster split as Keycloak.
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  # Skip the "grant access" screen for a smoother demo.
+  skipApprovalScreen: true
+
+# Pier is a public (PKCE) client - the SPA logs in with oidc-client-ts.
+staticClients:
+  - id: pier-s3
+    name: Pier S3 Gateway
+    public: true
+    redirectURIs:
+      - http://localhost:8081/callback
+
+connectors:
+  - type: ldap
+    id: ldap
+    name: LDAP
+    config:
+      host: openldap:1389
+      insecureNoSSL: true            # demo only: plaintext LDAP on the compose net
+      bindDN: cn=admin,dc=example,dc=org
+      bindPW: adminpassword
+      userSearch:
+        baseDN: ou=people,dc=example,dc=org
+        filter: "(objectClass=inetOrgPerson)"
+        username: uid
+        idAttr: uid
+        emailAttr: mail
+        nameAttr: cn
+      groupSearch:
+        baseDN: ou=groups,dc=example,dc=org
+        filter: "(objectClass=groupOfNames)"
+        userMatchers:
+          - userAttr: DN
+            groupAttr: member
+        # The group's cn becomes the group name in the `groups` claim, e.g.
+        # "reports-ro" -> read access to the reports bucket.
+        nameAttr: cn

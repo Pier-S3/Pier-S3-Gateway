@@ -96,6 +96,16 @@ dev-down: ## Остановить dev-окружение
 dev-logs: ## Логи dev-окружения
 	$(DOCKER) compose -f docker-compose.dev.yml logs -f
 
+# ─── Multi-provider e2e (Dex + LDAP) ───────────────────
+dex-up: ## Запустить Dex/LDAP multi-provider окружение
+	$(DOCKER) compose -f docker-compose.dex.yml up -d --build
+
+dex-down: ## Остановить Dex/LDAP окружение
+	$(DOCKER) compose -f docker-compose.dex.yml down -v
+
+dex-logs: ## Логи Dex/LDAP окружения
+	$(DOCKER) compose -f docker-compose.dex.yml logs -f
+
 # ─── Kubernetes ────────────────────────────────────────
 k8s-apply: ## Применить K8s манифесты
 	kubectl apply -f deployments/k8s/

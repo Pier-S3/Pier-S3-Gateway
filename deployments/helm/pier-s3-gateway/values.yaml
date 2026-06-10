@@ -116,6 +116,18 @@ networkPolicy:
   # Egress ports the gateway needs (DNS + Keycloak HTTPS + SeaweedFS S3).
   keycloakPort: 443
   seaweedfsPort: 8333
+  # Egress targets. SCOPE THESE: set namespaceLabels + podLabels to the real
+  # Keycloak / SeaweedFS workloads, or ipBlock for an off-cluster endpoint.
+  # Leaving a block empty falls back to "any namespace" (a rendered WARNING
+  # comment flags it) - safe to start with, but tighten before production.
+  keycloakEgress:
+    namespaceLabels: {}   # e.g. { kubernetes.io/metadata.name: keycloak }
+    podLabels: {}         # e.g. { app: keycloak }
+    ipBlock: ""           # e.g. "10.0.5.0/24" for an external Keycloak
+  seaweedfsEgress:
+    namespaceLabels: {}   # e.g. { kubernetes.io/metadata.name: seaweedfs }
+    podLabels: {}         # e.g. { app: seaweedfs }
+    ipBlock: ""
 
 # Pod-level security context (matches the hardened manifest defaults).
 podSecurityContext:

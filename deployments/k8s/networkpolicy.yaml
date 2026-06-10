@@ -20,22 +20,42 @@ spec:
         - port: 8081
           protocol: TCP
   egress:
-    # Allow DNS resolution
-    - to: []
+    # Allow DNS resolution to the cluster DNS service only (not the whole
+    # cluster). Adjust the namespace/pod labels to your CNI/DNS provider.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow Keycloak (HTTPS)
+    # Allow Keycloak (HTTPS) - restrict to the Keycloak namespace + pods, NOT
+    # every namespace. Set the labels to match your Keycloak install. If
+    # Keycloak runs outside the cluster, replace this with an `ipBlock` of its
+    # address range instead of a namespace/pod selector.
     - to:
-        - namespaceSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keycloak
+          podSelector:
+            matchLabels:
+              app: keycloak
       ports:
         - port: 443
           protocol: TCP
-    # Allow SeaweedFS
+    # Allow SeaweedFS - restrict to the storage namespace + pods.
     - to:
-        - namespaceSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: seaweedfs
+          podSelector:
+            matchLabels:
+              app: seaweedfs
       ports:
         - port: 8333
           protocol: TCP

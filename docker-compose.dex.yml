@@ -1,0 +1,84 @@
+# Multi-provider end-to-end profile: Pier authenticated by Dex (OIDC) brokering
+# an OpenLDAP directory, instead of Keycloak. Proves the gateway is a real OIDC
+# gateway - the ONLY difference from the Keycloak setup is OIDC_* configuration.
+#
+#   docker compose -f docker-compose.dex.yml up --build
+#
+# Then open http://localhost:8081 and log in as alice / password. Alice's LDAP
+# groups (reports-ro, uploads-wo, *-ro) arrive in the token's `groups` claim and
+# map straight onto Pier's bucket ACL. See docs/dex-setup.md.
+services:
+  # OpenLDAP — identity source, seeded from deployments/dex/ldap-seed.ldif.
+  openldap:
+    image: bitnami/openldap:2.6
+    environment:
+      LDAP_ROOT: dc=example,dc=org
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: adminpassword
+      # Load our custom directory instead of the default sample users.
+      LDAP_CUSTOM_LDIF_DIR: /ldifs
+      LDAP_SKIP_DEFAULT_TREE: "yes"
+    volumes:
+      - ./deployments/dex/ldap-seed.ldif:/ldifs/seed.ldif:ro
+    ports:
+      - "1389:1389"
+
+  # Dex — OIDC provider federating the LDAP directory.
+  dex:
+    image: dexidp/dex:v2.39.1
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes:
+      - ./deployments/dex/config.yaml:/etc/dex/config.yaml:ro
+    ports:
+      - "5556:5556"
+    depends_on:
+      - openldap
+
+  # SeaweedFS — S3-compatible storage (DEV-ONLY admin/admin in seaweedfs-s3.json).
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.69
+    command: "server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.port=9333 -volume.port=8080"
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+    volumes:
+      - seaweedfs-dex-data:/data
+      - ./deployments/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+
+  # Pier S3 Gateway — configured against Dex via provider-neutral OIDC_* vars.
+  pier-s3-gateway:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+      args:
+        # SPA points at Dex; request the extra scopes Dex gates groups/email behind.
+        VITE_KEYCLOAK_URL: http://localhost:5556/dex
+        VITE_KEYCLOAK_CLIENT_ID: pier-s3
+        VITE_OIDC_SCOPE: "openid profile email groups"
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: admin
+      S3_REGION: us-east-1
+      # Provider-neutral OIDC config — no KEYCLOAK_* needed.
+      OIDC_ISSUER: http://localhost:5556/dex          # browser-facing iss in tokens
+      OIDC_JWKS_URL: http://dex:5556/dex/keys          # in-cluster JWKS fetch
+      OIDC_CLIENT_ID: pier-s3
+      OIDC_AUDIENCE: pier-s3
+      OIDC_GROUPS_CLAIM: groups                        # Dex emits a flat groups[]
+      OIDC_USERNAME_CLAIM: email
+      # DEV ONLY: Dex/LDAP/JWKS here are plaintext http on the compose network.
+      OIDC_ALLOW_INSECURE: "true"
+      LISTEN_S3_ADDR: ":8080"
+      LISTEN_UI_ADDR: ":8081"
+      LOG_LEVEL: debug
+    restart: on-failure
+    depends_on:
+      - seaweedfs
+      - dex
+
+volumes:
+  seaweedfs-dex-data:
