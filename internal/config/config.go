@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -32,6 +33,12 @@ type Config struct {
 	OIDCUsernameClaim string
 	OIDCGroupsClaim   string
 	OIDCDiscoveryURL  string
+	// OIDCAllowInsecure permits http:// (non-TLS) OIDC issuer/JWKS/discovery
+	// URLs. It exists ONLY for local development against a plaintext IdP (e.g.
+	// the docker-compose Keycloak). In production these URLs must be https so an
+	// attacker cannot MITM the discovery document or JWKS to swap the trust
+	// anchor. Sourced from OIDC_ALLOW_INSECURE ("true"/"1").
+	OIDCAllowInsecure bool
 	ListenS3Addr      string
 	ListenUIAddr      string
 	LogLevel          string
@@ -72,6 +79,7 @@ func Load() *Config {
 		OIDCUsernameClaim:    getEnv("OIDC_USERNAME_CLAIM", ""),
 		OIDCGroupsClaim:      getEnv("OIDC_GROUPS_CLAIM", ""),
 		OIDCDiscoveryURL:     getEnv("OIDC_DISCOVERY_URL", ""),
+		OIDCAllowInsecure:    isTruthy(getEnv("OIDC_ALLOW_INSECURE", "")),
 		ListenS3Addr:         getEnv("LISTEN_S3_ADDR", DefaultListenS3Addr),
 		ListenUIAddr:         getEnv("LISTEN_UI_ADDR", DefaultListenUIAddr),
 		LogLevel:             getEnv("LOG_LEVEL", DefaultLogLevel),
@@ -169,6 +177,12 @@ func (c *Config) ResolveOIDC() (OIDCSettings, error) {
 	}
 
 	if c.OIDCDiscoveryURL != "" && (s.Issuer == "" || s.JWKSURL == "") {
+		// Validate the discovery URL's scheme BEFORE fetching: discovery defines
+		// the trust anchor (issuer + jwks_uri), so it must come over TLS unless
+		// insecure mode is explicitly enabled for dev.
+		if err := requireSecureURL("OIDC discovery URL", c.OIDCDiscoveryURL, c.OIDCAllowInsecure); err != nil {
+			return OIDCSettings{}, err
+		}
 		disc, err := discoverOIDC(c.OIDCDiscoveryURL)
 		if err != nil {
 			return OIDCSettings{}, fmt.Errorf("oidc discovery: %w", err)
@@ -181,7 +195,70 @@ func (c *Config) ResolveOIDC() (OIDCSettings, error) {
 		}
 	}
 
+	// Enforce TLS on the resolved issuer and JWKS endpoints. A plaintext JWKS
+	// fetch is MITM-able into serving attacker keys, which would let forged
+	// tokens verify. Dev against a plaintext IdP must opt in via
+	// OIDC_ALLOW_INSECURE.
+	if err := c.validateOIDCURLs(s); err != nil {
+		return OIDCSettings{}, err
+	}
+
 	return s, nil
+}
+
+// validateOIDCURLs rejects non-TLS (or non-http(s)) issuer/JWKS URLs unless
+// OIDC_ALLOW_INSECURE is set. Empty values are skipped (the required-field check
+// in Validate handles missing JWKS); an empty issuer only disables the issuer
+// binding, which is a separate, already-documented choice.
+func (c *Config) validateOIDCURLs(s OIDCSettings) error {
+	var errs []string
+	for _, f := range []struct{ label, raw string }{
+		{"OIDC issuer", s.Issuer},
+		{"OIDC JWKS URL", s.JWKSURL},
+	} {
+		if err := requireSecureURL(f.label, f.raw, c.OIDCAllowInsecure); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("insecure OIDC configuration: %s (set OIDC_ALLOW_INSECURE=true only for local dev)", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+// requireSecureURL parses raw and requires an https scheme. http is allowed only
+// when allowInsecure is true; any other scheme (or an unparseable URL) is always
+// rejected. An empty raw value is treated as "not set" and passes.
+func requireSecureURL(label, raw string, allowInsecure bool) error {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid URL (%q): %v", label, raw, err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return nil
+	case "http":
+		if allowInsecure {
+			return nil
+		}
+		return fmt.Errorf("%s uses insecure http (%q)", label, raw)
+	default:
+		return fmt.Errorf("%s has unsupported scheme %q (want https)", label, u.Scheme)
+	}
+}
+
+// isTruthy reports whether an env value means "on" ("true"/"1"/"yes",
+// case-insensitive).
+func isTruthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "1", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // firstNonEmpty returns the first argument that is non-empty after trimming.

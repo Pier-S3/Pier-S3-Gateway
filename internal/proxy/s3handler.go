@@ -108,11 +108,14 @@ func (h *S3Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !acl.CheckAccess(groups, bucket, r.Method) {
+		// Log the decision for audit, but not the caller's full group set: that
+		// is their complete authorization profile and does not belong in
+		// access-denial logs that may ship to lower-trust aggregators.
 		h.logger.Warn("access denied",
 			"user", username,
 			"bucket", bucket,
 			"method", r.Method,
-			"groups", groups,
+			"group_count", len(groups),
 		)
 		writeJSONError(w, http.StatusForbidden, "forbidden", "insufficient permissions")
 		return
@@ -152,12 +155,16 @@ func (h *S3Handler) handleListBuckets(w http.ResponseWriter, r *http.Request, gr
 		return
 	}
 
-	// Filter buckets by effective permissions
-	effective := acl.EffectiveBuckets(groups)
+	// Filter buckets by effective permissions. A user whose grant is the
+	// wildcard ("*-<policy>") holds no explicitly-named buckets, so it must be
+	// expanded against the backend's actual bucket set - otherwise a wildcard
+	// grantee (e.g. an auditor with "*-ro") would see an empty list here even
+	// though CheckAccess correctly authorizes them per bucket.
 	effectiveMap := make(map[string]bool)
-	for _, bp := range effective {
+	for _, bp := range acl.EffectiveBuckets(groups) {
 		effectiveMap[bp.Name] = true
 	}
+	_, hasWildcard := acl.WildcardGrant(groups)
 
 	// Build filtered XML response (simplified as JSON for the proxy)
 	type BucketInfo struct {
@@ -168,7 +175,7 @@ func (h *S3Handler) handleListBuckets(w http.ResponseWriter, r *http.Request, gr
 		if b.Name == nil {
 			continue
 		}
-		if effectiveMap[*b.Name] {
+		if hasWildcard || effectiveMap[*b.Name] {
 			filtered = append(filtered, BucketInfo{Name: *b.Name})
 		}
 	}
@@ -202,9 +209,12 @@ func extractBearerToken(r *http.Request) string {
 	return strings.TrimSpace(parts[1])
 }
 
-// writeJSONError writes a JSON error response.
+// writeJSONError writes a JSON error response. nosniff is set so a browser
+// navigating directly to a proxy URL cannot MIME-sniff the error body into
+// active content.
 func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{
 		"error":   code,

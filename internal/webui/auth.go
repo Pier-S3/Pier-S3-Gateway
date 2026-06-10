@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"pier-s3/internal/auth"
@@ -35,9 +36,20 @@ func AuthMiddleware(verifier auth.TokenVerifier) func(http.Handler) http.Handler
 func AuthMiddlewareWithMapper(verifier auth.TokenVerifier, mapper auth.ClaimMapper) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tokenString := extractToken(r)
+			tokenString, fromCookie := extractToken(r)
 			if tokenString == "" {
 				writeError(w, http.StatusUnauthorized, "unauthorized", "missing authentication")
+				return
+			}
+
+			// CSRF defense: a cookie-authenticated, state-changing request that
+			// the browser tells us is cross-site is rejected. The SPA itself
+			// authenticates API calls with a Bearer header (not the cookie), so
+			// this never blocks legitimate app traffic - only a forged request
+			// riding the ambient cookie from another origin. Header-bearer auth
+			// is exempt (a cross-origin page cannot read the token to set it).
+			if fromCookie && isCrossSiteStateChange(r) {
+				writeError(w, http.StatusForbidden, "csrf_blocked", "cross-site state-changing request rejected")
 				return
 			}
 
@@ -62,24 +74,60 @@ func AuthMiddlewareWithMapper(verifier auth.TokenVerifier, mapper auth.ClaimMapp
 
 // extractToken gets the bearer token from the Authorization header, falling
 // back to the access_token HttpOnly cookie set by the OIDC callback handler
-// (see oidc_handlers.go). The Authorization header takes precedence.
-func extractToken(r *http.Request) string {
+// (see oidc_handlers.go). The Authorization header takes precedence. The second
+// return value reports whether the token came from the cookie (which is the
+// CSRF-relevant case: a cookie is sent ambiently by the browser, a Bearer
+// header is not).
+func extractToken(r *http.Request) (token string, fromCookie bool) {
 	// Try Authorization header first
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
-			return strings.TrimSpace(parts[1])
+			return strings.TrimSpace(parts[1]), false
 		}
 	}
 
 	// Fall back to the access_token cookie (browser sessions).
 	cookie, err := r.Cookie(accessTokenCookie)
 	if err == nil && cookie.Value != "" {
-		return cookie.Value
+		return cookie.Value, true
 	}
 
-	return ""
+	return "", false
+}
+
+// isCrossSiteStateChange reports whether r is a state-changing (non-safe-method)
+// request that the browser indicates originated from a different site. Safe
+// methods (GET/HEAD/OPTIONS) never qualify.
+//
+// It trusts the Fetch Metadata Sec-Fetch-Site header when present (modern
+// browsers send it and it cannot be set by page JS), and otherwise falls back to
+// comparing the Origin header's host with the request Host. When neither signal
+// is present it returns false (no positive evidence of a cross-site request);
+// the SameSite=Lax cookie already constrains the remaining surface.
+func isCrossSiteStateChange(r *http.Request) bool {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
+	}
+
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "same-origin", "none":
+		return false
+	case "same-site", "cross-site":
+		return true
+	}
+
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil || u.Host == "" {
+			return true // unparseable / opaque Origin: treat as cross-site
+		}
+		return !strings.EqualFold(u.Host, r.Host)
+	}
+
+	return false
 }
 
 // GetUsername extracts username from request context (set by AuthMiddleware).

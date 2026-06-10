@@ -117,6 +117,8 @@ func TestResolveOIDCDiscoveryFillsMissing(t *testing.T) {
 	cfg := Config{
 		OIDCClientID:     "client",
 		OIDCDiscoveryURL: srv.URL, // base URL; well-known path is appended
+		// httptest serves over http; allow it for this mechanics test.
+		OIDCAllowInsecure: true,
 	}
 	got, err := cfg.ResolveOIDC()
 	require.NoError(t, err)
@@ -157,12 +159,63 @@ func TestResolveOIDCDiscoveryNotCalledWhenComplete(t *testing.T) {
 
 func TestResolveOIDCDiscoveryErrorPropagates(t *testing.T) {
 	cfg := Config{
-		OIDCClientID:     "client",
-		OIDCDiscoveryURL: "http://127.0.0.1:0/unreachable",
+		OIDCClientID:      "client",
+		OIDCDiscoveryURL:  "http://127.0.0.1:0/unreachable",
+		OIDCAllowInsecure: true, // so the http scheme check passes and the fetch is attempted
 	}
 	_, err := cfg.ResolveOIDC()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "oidc discovery")
+}
+
+// TestResolveOIDCRejectsInsecureURLs verifies that http issuer/JWKS/discovery
+// URLs are rejected by default (TLS required) and permitted only when
+// OIDCAllowInsecure is set.
+func TestResolveOIDCRejectsInsecureURLs(t *testing.T) {
+	t.Run("insecure issuer/jwks rejected by default", func(t *testing.T) {
+		cfg := Config{
+			OIDCClientID: "client",
+			OIDCIssuer:   "http://idp.example.com",
+			OIDCJWKSURL:  "http://idp.example.com/jwks",
+		}
+		_, err := cfg.ResolveOIDC()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "insecure")
+	})
+
+	t.Run("insecure permitted with allow flag", func(t *testing.T) {
+		cfg := Config{
+			OIDCClientID:      "client",
+			OIDCIssuer:        "http://idp.example.com",
+			OIDCJWKSURL:       "http://idp.example.com/jwks",
+			OIDCAllowInsecure: true,
+		}
+		got, err := cfg.ResolveOIDC()
+		require.NoError(t, err)
+		assert.Equal(t, "http://idp.example.com", got.Issuer)
+	})
+
+	t.Run("non-http scheme always rejected", func(t *testing.T) {
+		cfg := Config{
+			OIDCClientID:      "client",
+			OIDCIssuer:        "https://idp.example.com",
+			OIDCJWKSURL:       "file:///etc/passwd",
+			OIDCAllowInsecure: true,
+		}
+		_, err := cfg.ResolveOIDC()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "scheme")
+	})
+
+	t.Run("insecure discovery URL rejected by default", func(t *testing.T) {
+		cfg := Config{
+			OIDCClientID:     "client",
+			OIDCDiscoveryURL: "http://disc.example.com",
+		}
+		_, err := cfg.ResolveOIDC()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "OIDC discovery URL")
+	})
 }
 
 func TestDiscoverOIDCFullWellKnownURL(t *testing.T) {

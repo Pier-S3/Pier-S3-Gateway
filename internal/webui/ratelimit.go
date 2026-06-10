@@ -99,14 +99,26 @@ func rateLimitMiddleware(l *rateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-// clientIP extracts the best-effort client IP for rate-limiting keys. It honors
-// the first X-Forwarded-For hop (set by the trusted ingress) and falls back to
-// the transport remote address.
+// clientIP extracts the best-effort client IP for rate-limiting keys.
+//
+// It uses the RIGHT-MOST X-Forwarded-For entry, not the left-most. The left-most
+// entry is fully attacker-controlled: a client can send any
+// "X-Forwarded-For: 1.2.3.4" it likes, and the trusted ingress only *appends*
+// the real peer, so the right-most value is the one our own proxy added and
+// cannot be forged from outside. Trusting the left-most entry (the previous
+// behaviour) let any caller rotate the value per request and bypass the per-IP
+// limit entirely. Falls back to the transport remote address when no header is
+// present (e.g. direct intra-cluster requests).
+//
+// This assumes a single trusted proxy hop in front of the gateway (the
+// Kubernetes ingress). Behind N chained trusted proxies, the limiter should be
+// extended to skip N right-most hops.
 func clientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// First entry is the original client per RFC 7239 ordering.
-		first, _, _ := strings.Cut(xff, ",")
-		return strings.TrimSpace(first)
+		if i := strings.LastIndexByte(xff, ','); i >= 0 {
+			return strings.TrimSpace(xff[i+1:])
+		}
+		return strings.TrimSpace(xff)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

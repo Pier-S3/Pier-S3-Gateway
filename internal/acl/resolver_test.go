@@ -343,10 +343,13 @@ func TestIsAdminOperation(t *testing.T) {
 			expectAdmin: false,
 		},
 		{
+			// POST at bucket level (no object key) - e.g. multi-object delete or
+			// multipart completion - is not a plain per-object write and is
+			// blocked as an admin operation.
 			name:        "POST on bucket",
 			method:      "POST",
 			path:        "/bucket",
-			expectAdmin: false,
+			expectAdmin: true,
 		},
 
 		// Object-level operations
@@ -475,6 +478,34 @@ func TestIsAdminOperation(t *testing.T) {
 			method:      "POST",
 			path:        "/bucket/folder/key",
 			expectAdmin: false,
+		},
+
+		// Case-insensitive sub-resource matching: a casing variant of a blocked
+		// sub-resource must not slip past the blocklist.
+		{
+			name:        "uppercase ACL sub-resource blocked",
+			method:      "GET",
+			path:        "/bucket/object?ACL",
+			expectAdmin: true,
+		},
+		{
+			name:        "mixed-case Versioning sub-resource blocked",
+			method:      "GET",
+			path:        "/bucket?Versioning",
+			expectAdmin: true,
+		},
+		// Multipart-upload administration is blocked.
+		{
+			name:        "list multipart uploads blocked",
+			method:      "GET",
+			path:        "/bucket?uploads",
+			expectAdmin: true,
+		},
+		{
+			name:        "uploadId sub-resource blocked",
+			method:      "DELETE",
+			path:        "/bucket/object?uploadId=abc123",
+			expectAdmin: true,
 		},
 	}
 

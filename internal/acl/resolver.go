@@ -137,6 +137,9 @@ func CheckAccess(groups []string, bucket, method string) bool {
 // operation and blocked regardless of the caller's ro/rw membership, since
 // an rw user must not be able to reconfigure versioning, lifecycle, CORS,
 // encryption, replication, object-lock, etc.
+//
+// Keys MUST be lowercase: matching lowercases the incoming query parameter
+// first, so a casing variant like "?ACL" or "?Versioning" cannot slip past.
 var adminSubResources = map[string]struct{}{
 	"acl":                 {},
 	"policy":              {},
@@ -149,7 +152,7 @@ var adminSubResources = map[string]struct{}{
 	"encryption":          {},
 	"replication":         {},
 	"logging":             {},
-	"requestPayment":      {},
+	"requestpayment":      {},
 	"accelerate":          {},
 	"object-lock":         {},
 	"lock":                {},
@@ -161,9 +164,16 @@ var adminSubResources = map[string]struct{}{
 	"select":              {},
 	"restore":             {},
 	"torrent":             {},
-	"publicAccessBlock":   {},
-	"ownershipControls":   {},
+	"publicaccessblock":   {},
+	"ownershipcontrols":   {},
 	"intelligent-tiering": {},
+	// Multipart-upload administration. Listing in-progress uploads ("uploads")
+	// leaks other users' activity to a read-only caller, and the multipart
+	// sub-resources ("uploadId"/"partNumber") sit outside the plain object
+	// read/write model, so they are treated as admin operations.
+	"uploads":    {},
+	"uploadid":   {},
+	"partnumber": {},
 }
 
 // IsAdminOperation returns true for S3 admin operations that are always blocked.
@@ -185,11 +195,11 @@ func IsAdminOperation(method string, path string) bool {
 		return true
 	}
 
-	query := u.Query()
-
-	// Block any known bucket/object administration sub-resource.
-	for param := range adminSubResources {
-		if query.Has(param) {
+	// Block any known bucket/object administration sub-resource. Match
+	// case-insensitively against the lowercase adminSubResources keys so a
+	// casing variant ("?ACL", "?Versioning") cannot bypass the blocklist.
+	for param := range u.Query() {
+		if _, blocked := adminSubResources[strings.ToLower(param)]; blocked {
 			return true
 		}
 	}
@@ -206,10 +216,12 @@ func IsAdminOperation(method string, path string) bool {
 	// Split path into segments
 	parts := strings.Split(pathOnly, "/")
 
-	// If there's only one part (just bucket, no object key), certain methods are admin ops
+	// If there's only one part (just bucket, no object key), state-changing
+	// methods at bucket level are admin operations. PUT/DELETE create or remove
+	// the bucket; POST at bucket level (e.g. multi-object delete, multipart
+	// completion) is likewise not a plain per-object write and is blocked.
 	if len(parts) == 1 {
-		// PUT or DELETE on bucket level (no object key) are admin operations
-		if method == "PUT" || method == "DELETE" {
+		if method == "PUT" || method == "DELETE" || method == "POST" {
 			return true
 		}
 	}

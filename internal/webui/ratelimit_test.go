@@ -71,13 +71,22 @@ func TestRateLimitMiddleware429(t *testing.T) {
 	assert.Equal(t, 1, called, "handler should run only for the allowed request")
 }
 
-// TestClientIPForwardedFor verifies the client IP is taken from the first
-// X-Forwarded-For hop when present, else from RemoteAddr.
+// TestClientIPForwardedFor verifies the client IP is taken from the RIGHT-MOST
+// X-Forwarded-For hop (the value appended by the trusted ingress, which a remote
+// client cannot forge), else from RemoteAddr. A spoofed left-most entry must be
+// ignored so it cannot be used to rotate the rate-limit key.
 func TestClientIPForwardedFor(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "10.0.0.1:1234"
+	// "198.51.100.5" is attacker-supplied; "10.0.0.1" was appended by the proxy.
 	req.Header.Set("X-Forwarded-For", "198.51.100.5, 10.0.0.1")
-	assert.Equal(t, "198.51.100.5", clientIP(req))
+	assert.Equal(t, "10.0.0.1", clientIP(req))
+
+	// A single-entry header (proxy replaced rather than appended) is used as-is.
+	reqSingle := httptest.NewRequest("GET", "/", nil)
+	reqSingle.RemoteAddr = "10.0.0.9:1234"
+	reqSingle.Header.Set("X-Forwarded-For", "203.0.113.42")
+	assert.Equal(t, "203.0.113.42", clientIP(reqSingle))
 
 	req2 := httptest.NewRequest("GET", "/", nil)
 	req2.RemoteAddr = "10.0.0.2:4321"
