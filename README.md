@@ -243,9 +243,39 @@ Criteria: p99 latency ≤ 5ms (authorization overhead), error_rate < 0.1%
 └── Makefile                    # All build and test commands
 ```
 
+## Themes
+
+The UI ships System / Light / Dark plus code-defined presets, selectable from the
+header. Beyond the built-in accents (Ocean, Midnight, Emerald) it includes
+faithful **GitHub** and **Claude** (light + dark each), plus **Dracula**,
+**Nord**, **Solarized Light**, **Rosé Pine**, and **Gruvbox**. Themes are authored
+in code (`web/src/theme/presets.ts`) - not editable by end users - so no untrusted
+values reach the rendered surface. A preset may carry a full bespoke surface
+palette, not just an accent color. To add one, append an entry to `PRESET_THEMES`;
+it appears in the menu automatically.
+
+## Security
+
+Pier is built defense-in-depth: JWT alg-pinning + iss/aud/exp enforcement, PKCE
+S256, credential isolation (the user JWT never reaches storage), active-content
+neutralization on downloads, a fail-closed ACL, and a distroless non-root runtime.
+See the [security audit & penetration-vector analysis](docs/security-audit.md) for
+the full review, and [NGINX hardening](docs/nginx-hardening.md) for the edge
+configuration (header control, trusted `X-Forwarded-For`, streamed bodies).
+
 ## Documentation
 
 - [API reference](docs/api.md)
 - [Keycloak setup runbook](docs/keycloak-setup.md)
 - [Auth providers - integration roadmap](docs/auth-providers.md)
+- [IAM providers - integration catalog](docs/iam-providers.md)
+- [Multi-provider e2e: Pier + Dex + LDAP](docs/dex-setup.md)
+- [Security audit & pen-test](docs/security-audit.md)
+- [NGINX hardening guide](docs/nginx-hardening.md)
+- [License recommendation](docs/license-choice.md)
 - Translations: [`docs/i18n/`](docs/i18n/)
+
+## License
+
+Licensed under the **Apache License 2.0** - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+The rationale (and the MPL-2.0 runner-up) is in [docs/license-choice.md](docs/license-choice.md).

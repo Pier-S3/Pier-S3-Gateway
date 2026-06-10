@@ -1,0 +1,20 @@
+Pier S3 Gateway
+Copyright 2026 The Pier S3 Gateway authors
+
+This product is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this software except in compliance with the License. A copy of
+the License is provided in the LICENSE file and at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product bundles or depends on third-party software under their own licenses,
+including (non-exhaustive):
+
+  - github.com/aws/aws-sdk-go-v2 .................. Apache License 2.0
+  - github.com/golang-jwt/jwt/v5 ................. MIT License
+  - github.com/MicahParks/keyfunc ............... Apache License 2.0
+  - Ant Design (antd) and React ................. MIT License
+
+See each dependency's repository for its full license text. Run
+`go-licenses report ./...` (Go) and `npm-license-crawler` / `license-checker`
+(web) before a release to regenerate an authoritative third-party manifest.
