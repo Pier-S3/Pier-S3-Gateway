@@ -76,7 +76,8 @@ they fall back to the `KEYCLOAK_*` equivalent so existing setups keep working.
 | `OIDC_CLIENT_ID` | Client id at the IdP. | `KEYCLOAK_CLIENT_ID` |
 | `OIDC_USERNAME_CLAIM` | Dotted path to the identity claim. | `preferred_username` then `sub` |
 | `OIDC_GROUPS_CLAIM` | Dotted path to the groups/roles claim. | `groups` + `realm_access.roles` |
-| `OIDC_DISCOVERY_URL` | Base or well-known URL; fills any unset issuer/JWKS. | (none) |
+| `OIDC_DISCOVERY_URL` | Base or well-known URL; fills any unset issuer/JWKS. When `OIDC_ISSUER` is also set, the discovered issuer must match it (fail-closed cross-check). | (none) |
+| `OIDC_REDIRECT_URI` | Explicit OAuth2 `redirect_uri` for the server-side login flow; allowlist the exact value at the IdP. | (empty - SPA supplies it) |
 
 `OIDC_GROUPS_CLAIM` accepts a string array, a string-keyed object (keys are
 treated as group names), or a single string; a leading `/` is stripped from each

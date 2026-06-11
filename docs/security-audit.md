@@ -27,35 +27,30 @@ every finding by severity, marks which were **fixed in this pass** and which are
 | NETPOL-1 | **High** | Raw + Helm NetworkPolicy egress used `namespaceSelector: {}` (any namespace) on 443/8333. | Raw manifest scoped to named Keycloak/SeaweedFS namespace+pod selectors; Helm egress made configurable (namespace/pod labels or `ipBlock`) with a rendered WARNING when left unscoped. |
 | DKR-1 | **High** | Dockerfile used `go mod download \|\| true` (swallowed failures) and `npm install`. | `go mod download` (no `\|\| true`), `go build -mod=readonly`, `npm ci` (lockfile-reproducible), digest-pinning guidance; SeaweedFS pinned off `:latest`; dev creds marked DEV-ONLY. |
 
+### Hardening pass (applied 2026-06-11)
+
+The previously "recommended" items below were applied in this pass:
+
+| ID | Severity | Issue | Fix |
+|----|----------|-------|-----|
+| DISC-1 | **Low** | Discovered issuer was not cross-checked against `OIDC_ISSUER`. | `ResolveOIDC` now fails closed when discovery is consulted and the discovered issuer differs from the configured one (trailing slash ignored). Tested. (`internal/config/config.go`) |
+| CK-1 | **Medium** | `access_token`/`refresh_token` (and transient login) cookies used `Path=/`, so they rode along on static-asset requests. | All auth cookies are scoped to `auth.CookiePath` (`/api/`); every consumer lives under that prefix and all `clearCookie`/`ClearRefreshTokenCookie` calls use the same path so logout keeps working. Tested. |
+| LOG-2 | **Medium** | Token-endpoint error bodies were interpolated into error strings logged at `Error` level. | Errors now carry only the status + parsed OAuth2 `error` code (`oauthErrorCode`); raw bodies (incl. `error_description`/HTML) are never propagated. Tested. (`internal/auth/oidc.go`) |
+| EDGE-1 | **Medium** | `/_health` `/_ready` were reachable through the public k8s Ingress (NGINX config already blocked them). | Probe endpoints moved to a dedicated listener (`LISTEN_HEALTH_ADDR`, default `:8082`) that the Service/Ingress never expose; kubelet probes target the `health` containerPort directly. A `server-snippet` 404 was considered first but rejected: it is Critical-risk and refused by ingress-nginx >= 1.12 at the default `annotations-risk-level: High`. |
+| RED-1 | **Low** | No explicit `redirect_uri` on the server-side login flow. | New `OIDC_REDIRECT_URI` env var wired through `NewOIDCConfig`; allowlist the exact value at the IdP. Empty keeps the SPA-supplied behavior. |
+| HELM-1 | **Low** | An all-empty `secret.data` rendered an empty Secret silently. | `templates/secret.yaml` now `fail`s the render when `externalSecret.enabled=false` and no data/existingSecret is given. |
+| DEV-1 | **Low** | `deployments/seaweedfs-s3.json` shipped `admin/admin` dev creds under a prod-looking name. | Renamed to `seaweedfs-s3.dev.json` (compose references updated) so it cannot be mistaken for a prod artifact. |
+
 ## Recommended (not yet applied - require a product/ops decision)
 
-### Discovery issuer cross-check - **Low** (largely mitigated)
-With SSRF-1, the discovery URL is now fetched over TLS, closing the practical
-MITM path. As a further belt-and-suspenders step, when both `OIDC_ISSUER` and
-`OIDC_DISCOVERY_URL` are set you may assert the discovered issuer equals the
-configured one. (`Config.ResolveOIDC`)
-
-### Cookie scope & token lifecycle - **Medium**
-- Set `access_token`/`refresh_token` cookie `Path=/api/` (not `/`) so they aren't
-  sent with static-asset requests. **Caveat:** the matching `clearCookie` calls
-  must use the same path or logout won't delete them.
+### Token lifecycle - **Medium**
 - Stateless JWTs can't be revoked before expiry. Keep the Keycloak access-token
   TTL short (≈5 min) and document it; for high-value ops consider token
   introspection.
-- Token-endpoint error bodies are interpolated into error strings that get logged
-  at `Error` level. Log only the status + parsed `error` code. (`internal/auth/oidc.go`)
 
 ### Edge / misc - **Medium/Low**
-- `/_health` `/_ready` were reachable through the public ingress - the provided
-  NGINX config now returns 404 for them; mirror that in the k8s Ingress.
 - `style-src 'unsafe-inline'` is required by antd's CSS-in-JS (CSS-injection /
   exfiltration risk). Track antd's static-extraction path to remove it.
-- Set an explicit `redirect_uri` and allowlist it at the IdP (defence against any
-  future open-redirect regression).
-- Helm: `fail` the render when `externalSecret.enabled=false` **and** no secret
-  data/existingSecret is provided, instead of creating an empty Secret.
-- `deployments/seaweedfs-s3.json` ships `admin/admin` dev creds - mark clearly as
-  dev-only and keep out of any prod path.
 
 ## What's already strong
 
