@@ -19,6 +19,28 @@ OIDC: JWT verification, group/role-based ACL of the form `<bucket>-<ro|rw|wo>`
 > [Français](docs/i18n/fr/README.md). The English README is the source of truth;
 > localized copies live under [`docs/i18n/`](docs/i18n/).
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshots/buckets-light.png" alt="Pier S3 Gateway - bucket view with per-bucket RO/RW/WO access badges" width="760">
+</p>
+
+The bucket view above shows per-bucket access badges - read-only (`RO`),
+read/write (`RW`) and write-only (`WO`) - derived from the signed-in user's OIDC
+groups (`<bucket>-<ro|rw|wo>`, plus the `*` wildcard). Buckets a user has no
+grant for are hidden entirely.
+
+| Buckets - Dark | Buckets - Claude theme |
+|:---:|:---:|
+| [![Dark theme](docs/assets/screenshots/buckets-dark.png)](docs/assets/screenshots/buckets-dark.png) | [![Claude theme](docs/assets/screenshots/buckets-claude.png)](docs/assets/screenshots/buckets-claude.png) |
+
+| Object browser | File preview |
+|:---:|:---:|
+| [![Object browser](docs/assets/screenshots/object-browser.png)](docs/assets/screenshots/object-browser.png) | [![File preview](docs/assets/screenshots/file-preview.png)](docs/assets/screenshots/file-preview.png) |
+
+All themes are switchable from the header - see [Themes](#themes). More captures
+live in [`docs/assets/screenshots/`](docs/assets/screenshots/).
+
 ## Requirements
 
 - Go 1.22+
@@ -253,6 +275,10 @@ in code (`web/src/theme/presets.ts`) - not editable by end users - so no untrust
 values reach the rendered surface. A preset may carry a full bespoke surface
 palette, not just an accent color. To add one, append an entry to `PRESET_THEMES`;
 it appears in the menu automatically.
+
+The [Screenshots](#screenshots) section shows the default, Dark and Claude themes
+in action; the full set of captures lives in
+[`docs/assets/screenshots/`](docs/assets/screenshots/).
 
 ## Security
 

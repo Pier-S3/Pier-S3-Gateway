@@ -539,3 +539,7 @@ web/dist/
 
 # NOTE: internal/webui/static/ (embedded SPA build output) is intentionally
 # tracked - the Go binary serves it via go:embed.
+
+# Raw local UI captures (macOS-named, with spaces). Curated, renamed copies for
+# the README/docs live under docs/assets/screenshots/ and ARE tracked.
+/screenshots/
