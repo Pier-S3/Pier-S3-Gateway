@@ -14,8 +14,20 @@ export type PreviewKind =
   | 'video'
   | 'audio'
   | 'text'
+  | 'markdown'
+  | 'csv'
+  | 'json'
   | 'pdf'
   | 'unsupported';
+
+/**
+ * Kinds whose bytes are read as text (and rendered without ever executing
+ * them): plain source, markdown (rendered without raw HTML), CSV tables and
+ * pretty-printed JSON. They all share the MAX_TEXT_BYTES cap.
+ */
+export function isTextualKind(kind: PreviewKind): boolean {
+  return kind === 'text' || kind === 'markdown' || kind === 'csv' || kind === 'json';
+}
 
 /** Max bytes we will read and render as text. Larger text files are not loaded. */
 export const MAX_TEXT_BYTES = 512 * 1024;
@@ -35,9 +47,15 @@ const EXT_KIND: Record<string, PreviewKind> = {
   m4a: 'audio', aac: 'audio',
   // pdf
   pdf: 'pdf',
+  // markdown - rendered by react-markdown WITHOUT raw HTML (inert by design)
+  md: 'markdown', markdown: 'markdown',
+  // delimiter-separated values - parsed client-side into an inert table
+  csv: 'csv', tsv: 'csv',
+  // json - pretty-printed (parse failures fall back to escaped source)
+  json: 'json',
   // text / code / data (shown as escaped source - never parsed as markup)
-  txt: 'text', md: 'text', markdown: 'text', json: 'text', yaml: 'text',
-  yml: 'text', csv: 'text', tsv: 'text', log: 'text', xml: 'text', html: 'text',
+  txt: 'text', yaml: 'text',
+  yml: 'text', log: 'text', xml: 'text', html: 'text',
   htm: 'text', css: 'text', js: 'text', mjs: 'text', cjs: 'text', ts: 'text',
   tsx: 'text', jsx: 'text', go: 'text', py: 'text', rb: 'text', rs: 'text',
   java: 'text', kt: 'text', c: 'text', h: 'text', cpp: 'text', hpp: 'text',
@@ -66,9 +84,12 @@ export function previewKindFor(key: string, contentType?: string): PreviewKind {
   if (ct.startsWith('video/')) return 'video';
   if (ct.startsWith('audio/')) return 'audio';
   if (ct === 'application/pdf') return 'pdf';
-  // text/* and JSON are shown as escaped source. text/html stays 'text' too -
+  if (ct === 'text/markdown') return 'markdown';
+  if (ct === 'text/csv' || ct === 'text/tab-separated-values') return 'csv';
+  if (ct === 'application/json') return 'json';
+  // Remaining text/* is shown as escaped source. text/html stays 'text' too -
   // it is rendered as source, never executed.
-  if (ct.startsWith('text/') || ct === 'application/json') return 'text';
+  if (ct.startsWith('text/')) return 'text';
 
   return 'unsupported';
 }

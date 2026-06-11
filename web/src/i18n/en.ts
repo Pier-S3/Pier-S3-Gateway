@@ -78,6 +78,11 @@ const en = {
     tooLarge: 'This file is too large to preview',
     downloadToView: 'Download to view it',
     failed: 'Failed to load preview',
+    modeRendered: 'Rendered',
+    modeSource: 'Source',
+    modeTable: 'Table',
+    modeFormatted: 'Formatted',
+    tableTruncated: 'Large file: the table preview is truncated',
   },
   messages: {
     uploaded: '{{name}} uploaded',

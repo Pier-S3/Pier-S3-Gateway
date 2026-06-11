@@ -837,6 +837,57 @@ body {
   word-break: break-word;
 }
 
+/* Rendered/source toggle row above markdown, CSV and JSON previews. */
+.preview-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/* Rendered markdown: readable typography inside the modal, no surprises from
+   document content (images are rendered as links, so nothing auto-loads). */
+.preview-markdown {
+  padding: var(--space-2) var(--space-3);
+  max-height: 68vh;
+  overflow: auto;
+  word-break: break-word;
+}
+
+.preview-markdown pre,
+.preview-markdown code {
+  font-family: var(--dbx-mono);
+  font-size: 12.5px;
+  background: var(--dbx-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.preview-markdown pre {
+  padding: var(--space-3);
+  overflow: auto;
+}
+
+.preview-markdown table {
+  border-collapse: collapse;
+}
+
+.preview-markdown th,
+.preview-markdown td {
+  border: 1px solid var(--dbx-border);
+  padding: 4px 10px;
+}
+
+.preview-markdown blockquote {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--dbx-border-strong, var(--dbx-border));
+  color: var(--dbx-muted);
+}
+
+.preview-table {
+  max-height: 68vh;
+  overflow: auto;
+}
+
 /* ===========================================================================
    Motion
    ========================================================================= */

@@ -78,6 +78,11 @@ const es = {
     tooLarge: 'El archivo es demasiado grande para la vista previa',
     downloadToView: 'Descárgalo para verlo',
     failed: 'No se pudo cargar la vista previa',
+    modeRendered: 'Renderizado',
+    modeSource: 'Código fuente',
+    modeTable: 'Tabla',
+    modeFormatted: 'Formateado',
+    tableTruncated: 'Archivo grande: la tabla de vista previa está recortada',
   },
   messages: {
     uploaded: '{{name}} subido',

@@ -79,6 +79,11 @@ const ru = {
     tooLarge: 'Файл слишком большой для просмотра',
     downloadToView: 'Скачайте, чтобы открыть',
     failed: 'Не удалось загрузить просмотр',
+    modeRendered: 'Рендер',
+    modeSource: 'Исходник',
+    modeTable: 'Таблица',
+    modeFormatted: 'Форматированный',
+    tableTruncated: 'Большой файл: таблица в просмотре обрезана',
   },
   messages: {
     uploaded: '{{name}} загружен',

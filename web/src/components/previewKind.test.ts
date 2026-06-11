@@ -23,9 +23,15 @@ describe('previewKindFor (by extension)', () => {
 
   it('classifies text/code/data as text', () => {
     expect(previewKindFor('a.txt')).toBe('text');
-    expect(previewKindFor('a.md')).toBe('text');
-    expect(previewKindFor('a.json')).toBe('text');
     expect(previewKindFor('main.go')).toBe('text');
+  });
+
+  it('classifies markdown, csv/tsv and json into their rich renderers', () => {
+    expect(previewKindFor('README.md')).toBe('markdown');
+    expect(previewKindFor('notes.markdown')).toBe('markdown');
+    expect(previewKindFor('data.csv')).toBe('csv');
+    expect(previewKindFor('data.tsv')).toBe('csv');
+    expect(previewKindFor('config.json')).toBe('json');
   });
 
   it('treats HTML/XML files as TEXT (shown as source, never executed)', () => {
@@ -47,7 +53,9 @@ describe('previewKindFor (content-type fallback)', () => {
     expect(previewKindFor('blob', 'audio/mpeg')).toBe('audio');
     expect(previewKindFor('blob', 'application/pdf')).toBe('pdf');
     expect(previewKindFor('blob', 'text/plain; charset=utf-8')).toBe('text');
-    expect(previewKindFor('blob', 'application/json')).toBe('text');
+    expect(previewKindFor('blob', 'application/json')).toBe('json');
+    expect(previewKindFor('blob', 'text/markdown')).toBe('markdown');
+    expect(previewKindFor('blob', 'text/csv')).toBe('csv');
   });
 
   it('maps SVG content-type to the safe <img> renderer', () => {

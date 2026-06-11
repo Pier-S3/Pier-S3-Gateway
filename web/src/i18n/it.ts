@@ -78,6 +78,11 @@ const it = {
     tooLarge: 'Il file è troppo grande per l\'anteprima',
     downloadToView: 'Scaricalo per visualizzarlo',
     failed: 'Impossibile caricare l\'anteprima',
+    modeRendered: 'Renderizzato',
+    modeSource: 'Sorgente',
+    modeTable: 'Tabella',
+    modeFormatted: 'Formattato',
+    tableTruncated: 'File di grandi dimensioni: la tabella in anteprima è troncata',
   },
   messages: {
     uploaded: '{{name}} caricato',

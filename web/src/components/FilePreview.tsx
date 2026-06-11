@@ -1,16 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Button, Spin, Empty, Typography, message } from 'antd';
+import { Modal, Button, Spin, Empty, Typography, message, Segmented, Table, Alert } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { fetchObjectBlob, downloadObject, errorMessage } from '../api/client';
 import {
   previewKindFor,
+  isTextualKind,
   MAX_TEXT_BYTES,
   MAX_PREVIEW_BYTES,
   type PreviewKind,
 } from './previewKind';
+import { parseCsv, delimiterFor } from './csv';
 
 const { Text } = Typography;
+
+// SECURITY: react-markdown is used WITHOUT rehype-raw, so raw HTML inside
+// markdown is never parsed into live DOM, and its default urlTransform strips
+// dangerous link protocols (javascript: etc.). On top of that we open links in
+// a new tab without an opener, and we do NOT auto-load images: an <img> would
+// make the browser fetch an arbitrary remote URL the moment the preview opens
+// (tracking/exfiltration vector), so images render as plain links instead.
+const markdownComponents = {
+  a: ({ ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} target="_blank" rel="noopener noreferrer" />
+  ),
+  img: ({ src, alt }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <a href={typeof src === 'string' ? src : undefined} target="_blank" rel="noopener noreferrer">
+      {alt || String(src ?? '')}
+    </a>
+  ),
+};
 
 interface Props {
   bucket: string;
@@ -36,6 +57,8 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
   const [status, setStatus] = useState<Status>('loading');
   const [url, setUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
+  // Rendered vs raw-source toggle for markdown/csv/json previews.
+  const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   // Track the active object URL so we always revoke exactly what we created.
   const urlRef = useRef<string | null>(null);
 
@@ -54,6 +77,7 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
       setStatus('loading');
       setUrl(null);
       setTextContent('');
+      setViewMode('rendered');
       revoke();
 
       if (kind === 'unsupported') {
@@ -76,14 +100,15 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
           return;
         }
 
-        if (kind === 'text') {
+        if (isTextualKind(kind)) {
           if (blob.size > MAX_TEXT_BYTES) {
             setStatus('too-large');
             return;
           }
-          // Read as text and render via React children, which escapes it. The
-          // bytes are never interpreted as markup, so .html/.xml/.svg files are
-          // shown as inert source rather than executed.
+          // Read as text; every textual renderer below emits the bytes through
+          // React children (escaped) or inert components. The content is never
+          // interpreted as markup in our origin, so .html/.xml/.svg files are
+          // shown as source and markdown cannot smuggle live HTML.
           const text = await blob.text();
           if (cancelled) return;
           setTextContent(text);
@@ -126,6 +151,49 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
     </Empty>
   );
 
+  const renderMarkdown = () => (
+    <div className="preview-markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {textContent}
+      </ReactMarkdown>
+    </div>
+  );
+
+  const renderCsv = () => {
+    const table = parseCsv(textContent, delimiterFor(objectKey));
+    const columns = table.header.map((title, i) => ({
+      title,
+      dataIndex: i,
+      key: i,
+      ellipsis: true,
+    }));
+    const rows = table.rows.map((cells, i) => ({ key: i, ...cells }));
+    return (
+      <div className="preview-table">
+        {table.truncated && (
+          <Alert type="info" showIcon message={t('preview.tableTruncated')} style={{ marginBottom: 12 }} />
+        )}
+        <Table
+          columns={columns}
+          dataSource={rows}
+          size="small"
+          pagination={{ pageSize: 50, hideOnSinglePage: true, showSizeChanger: false }}
+          scroll={{ x: 'max-content' }}
+        />
+      </div>
+    );
+  };
+
+  const renderJson = () => {
+    try {
+      const pretty = JSON.stringify(JSON.parse(textContent), null, 2);
+      return <pre className="preview-text">{pretty}</pre>;
+    } catch {
+      // Not valid JSON after all - fall back to the escaped raw source.
+      return <pre className="preview-text">{textContent}</pre>;
+    }
+  };
+
   const renderBody = () => {
     if (status === 'loading') {
       return <div className="preview-center"><Spin /></div>;
@@ -133,6 +201,11 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
     if (status === 'unsupported') return fallback(t('preview.unsupported'));
     if (status === 'too-large') return fallback(t('preview.tooLarge'));
     if (status === 'error') return fallback(t('preview.failed'));
+
+    // Rendered/source toggle for the structured textual kinds.
+    if (viewMode === 'source' && (kind === 'markdown' || kind === 'csv' || kind === 'json')) {
+      return <pre className="preview-text">{textContent}</pre>;
+    }
 
     switch (kind) {
       case 'image':
@@ -155,6 +228,12 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
             sandbox=""
           />
         );
+      case 'markdown':
+        return renderMarkdown();
+      case 'csv':
+        return renderCsv();
+      case 'json':
+        return renderJson();
       case 'text':
         // Plain text rendered as React children (escaped) - never as markup.
         return <pre className="preview-text">{textContent}</pre>;
@@ -162,6 +241,14 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
         return fallback(t('preview.unsupported'));
     }
   };
+
+  // Label of the "rendered" side of the toggle, per kind.
+  const renderedLabel =
+    kind === 'csv' ? t('preview.modeTable')
+    : kind === 'json' ? t('preview.modeFormatted')
+    : t('preview.modeRendered');
+
+  const showModeToggle = status === 'ready' && (kind === 'markdown' || kind === 'csv' || kind === 'json');
 
   return (
     <Modal
@@ -182,6 +269,19 @@ export default function FilePreview({ bucket, objectKey, size, visible, onClose 
         </Button>,
       ]}
     >
+      {showModeToggle && (
+        <div className="preview-toolbar">
+          <Segmented
+            size="small"
+            value={viewMode}
+            onChange={(v) => setViewMode(v as 'rendered' | 'source')}
+            options={[
+              { label: renderedLabel, value: 'rendered' },
+              { label: t('preview.modeSource'), value: 'source' },
+            ]}
+          />
+        </div>
+      )}
       <div className="preview-body">{renderBody()}</div>
     </Modal>
   );

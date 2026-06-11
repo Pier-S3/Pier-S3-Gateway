@@ -78,6 +78,11 @@ const fr = {
     tooLarge: 'Le fichier est trop volumineux pour l\'aperçu',
     downloadToView: 'Téléchargez-le pour le consulter',
     failed: 'Échec du chargement de l\'aperçu',
+    modeRendered: 'Rendu',
+    modeSource: 'Source',
+    modeTable: 'Tableau',
+    modeFormatted: 'Formaté',
+    tableTruncated: 'Fichier volumineux : le tableau de l\'aperçu est tronqué',
   },
   messages: {
     uploaded: '{{name}} importé',
