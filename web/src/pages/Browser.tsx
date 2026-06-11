@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useBrowserStore } from '../store/browser';
@@ -12,7 +12,15 @@ export default function Browser() {
   const { t } = useTranslation();
   const { bucket } = useParams<{ bucket: string }>();
   const navigate = useNavigate();
-  const { objects, prefixes, loading, error, prefix, truncated, fetchObjects, setPrefix, loadMore } = useBrowserStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The current folder prefix is driven by the URL (?prefix=...), NOT by
+  // persisted store state. Entering a bucket always lands on /buckets/<bucket>
+  // with no ?prefix (every entry point - bucket card, sidebar, breadcrumb home -
+  // navigates to the bare bucket URL), so switching buckets reliably starts at
+  // the new bucket's root instead of inheriting the previous bucket's folder.
+  // It also makes browser back/forward and deep links work.
+  const prefix = searchParams.get('prefix') ?? '';
+  const { objects, prefixes, loading, error, truncated, fetchObjects, loadMore } = useBrowserStore();
   const { buckets, fetchBuckets } = useBucketsStore();
 
   useEffect(() => {
@@ -31,7 +39,9 @@ export default function Browser() {
   }, [bucket, prefix, canRead, fetchObjects]);
 
   const handleNavigatePrefix = (newPrefix: string) => {
-    setPrefix(newPrefix);
+    // Drive folder navigation through the URL so it composes with router history
+    // and never lingers across a bucket switch.
+    setSearchParams(newPrefix ? { prefix: newPrefix } : {});
   };
 
   const handleRefresh = () => {
