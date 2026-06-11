@@ -101,8 +101,10 @@ func TestHandleCallbackSuccess(t *testing.T) {
 	require.NotNil(t, at)
 	assert.Equal(t, "AT-123", at.Value)
 	assert.True(t, at.HttpOnly)
+	assert.Equal(t, auth.CookiePath, at.Path, "token cookies are scoped to the API prefix")
 	require.NotNil(t, rt)
 	assert.Equal(t, "RT-456", rt.Value)
+	assert.Equal(t, auth.CookiePath, rt.Path, "token cookies are scoped to the API prefix")
 
 	// Transient cookies cleared.
 	if c := findCookie(resp, pkceVerifierCookie); c != nil {

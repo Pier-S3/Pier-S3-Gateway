@@ -129,7 +129,9 @@ func HandleCallback(oidcCfg *auth.OIDCConfig, logger *slog.Logger) http.HandlerF
 }
 
 // setAccessTokenCookie stores the access token in an HttpOnly cookie.
-// maxAge <= 0 results in a session cookie.
+// maxAge <= 0 results in a session cookie. The cookie is scoped to
+// auth.CookiePath so it is not attached to static-asset requests; every
+// consumer (the UI API) lives under that prefix.
 func setAccessTokenCookie(w http.ResponseWriter, token string, maxAge int) {
 	if maxAge < 0 {
 		maxAge = 0
@@ -137,7 +139,7 @@ func setAccessTokenCookie(w http.ResponseWriter, token string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     accessTokenCookie,
 		Value:    token,
-		Path:     "/",
+		Path:     auth.CookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
@@ -145,12 +147,14 @@ func setAccessTokenCookie(w http.ResponseWriter, token string, maxAge int) {
 	})
 }
 
-// setTransientCookie stores a short-lived value used during the login round-trip.
+// setTransientCookie stores a short-lived value used during the login
+// round-trip. Scoped to auth.CookiePath: both the /login and /callback
+// endpoints live under it.
 func setTransientCookie(w http.ResponseWriter, name, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
-		Path:     "/",
+		Path:     auth.CookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
@@ -158,12 +162,14 @@ func setTransientCookie(w http.ResponseWriter, name, value string) {
 	})
 }
 
-// clearCookie expires a cookie immediately.
+// clearCookie expires a cookie immediately. The Path MUST equal the path the
+// cookie was set with (auth.CookiePath), otherwise the browser keeps the
+// original cookie and logout silently stops working.
 func clearCookie(w http.ResponseWriter, name string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
-		Path:     "/",
+		Path:     auth.CookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,

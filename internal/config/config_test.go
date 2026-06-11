@@ -22,7 +22,8 @@ var allRequiredEnv = map[string]string{
 
 // optionalEnv lists the env vars that have defaults.
 var optionalEnv = []string{
-	"S3_ENDPOINT", "S3_REGION", "LISTEN_S3_ADDR", "LISTEN_UI_ADDR", "LOG_LEVEL",
+	"S3_ENDPOINT", "S3_REGION", "LISTEN_S3_ADDR", "LISTEN_UI_ADDR",
+	"LISTEN_HEALTH_ADDR", "LOG_LEVEL",
 }
 
 // clearAllEnv unsets every config-related env var so each test starts from a
@@ -90,6 +91,8 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(t, ":8080", cfg.ListenS3Addr)
 	assert.Equal(t, DefaultListenUIAddr, cfg.ListenUIAddr)
 	assert.Equal(t, ":8081", cfg.ListenUIAddr)
+	assert.Equal(t, DefaultListenHealthAddr, cfg.ListenHealthAddr)
+	assert.Equal(t, ":8082", cfg.ListenHealthAddr)
 	assert.Equal(t, DefaultLogLevel, cfg.LogLevel)
 	assert.Equal(t, "info", cfg.LogLevel)
 
@@ -110,7 +113,9 @@ func TestLoadFromEnv(t *testing.T) {
 	t.Setenv("S3_REGION", "eu-west-1")
 	t.Setenv("LISTEN_S3_ADDR", ":9090")
 	t.Setenv("LISTEN_UI_ADDR", ":9091")
+	t.Setenv("LISTEN_HEALTH_ADDR", ":9092")
 	t.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("OIDC_REDIRECT_URI", "https://ui.example.com/api/v1/auth/callback")
 
 	cfg := Load()
 	require.NotNil(t, cfg)
@@ -126,7 +131,9 @@ func TestLoadFromEnv(t *testing.T) {
 	assert.Equal(t, "https://kc.example.com/jwks", cfg.KeycloakJWKSURL)
 	assert.Equal(t, ":9090", cfg.ListenS3Addr)
 	assert.Equal(t, ":9091", cfg.ListenUIAddr)
+	assert.Equal(t, ":9092", cfg.ListenHealthAddr)
 	assert.Equal(t, "debug", cfg.LogLevel)
+	assert.Equal(t, "https://ui.example.com/api/v1/auth/callback", cfg.OIDCRedirectURI)
 }
 
 func TestValidate(t *testing.T) {

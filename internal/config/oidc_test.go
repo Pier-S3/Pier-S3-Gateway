@@ -143,6 +143,42 @@ func TestResolveOIDCExplicitWinsOverDiscovery(t *testing.T) {
 	assert.Equal(t, "https://explicit.example.com/jwks", got.JWKSURL)
 }
 
+// TestResolveOIDCDiscoveryIssuerMismatch verifies the fail-closed cross-check:
+// an explicitly configured issuer that disagrees with the discovered one means
+// the discovery URL points at a different IdP than tokens are validated
+// against, and resolution must error rather than prefer either value.
+func TestResolveOIDCDiscoveryIssuerMismatch(t *testing.T) {
+	srv := discoveryServer(t, "https://attacker.example.com", "https://attacker.example.com/jwks")
+
+	cfg := Config{
+		OIDCIssuer: "https://explicit.example.com",
+		// JWKS left empty so discovery is consulted.
+		OIDCClientID:      "client",
+		OIDCDiscoveryURL:  srv.URL,
+		OIDCAllowInsecure: true,
+	}
+	_, err := cfg.ResolveOIDC()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match configured issuer")
+}
+
+// TestResolveOIDCDiscoveryIssuerMatch verifies that a matching discovered
+// issuer (modulo trailing slash) passes the cross-check and fills the JWKS URL.
+func TestResolveOIDCDiscoveryIssuerMatch(t *testing.T) {
+	srv := discoveryServer(t, "https://idp.example.com", "https://idp.example.com/jwks")
+
+	cfg := Config{
+		OIDCIssuer:        "https://idp.example.com/", // trailing slash must not matter
+		OIDCClientID:      "client",
+		OIDCDiscoveryURL:  srv.URL,
+		OIDCAllowInsecure: true,
+	}
+	got, err := cfg.ResolveOIDC()
+	require.NoError(t, err)
+	assert.Equal(t, "https://idp.example.com/", got.Issuer, "explicit issuer is kept verbatim")
+	assert.Equal(t, "https://idp.example.com/jwks", got.JWKSURL)
+}
+
 func TestResolveOIDCDiscoveryNotCalledWhenComplete(t *testing.T) {
 	// Point discovery at an unreachable URL; it must not be contacted because
 	// both issuer and jwks are already set, so resolution still succeeds.

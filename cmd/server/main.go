@@ -43,7 +43,10 @@ func main() {
 		cfg.KeycloakRealm,
 		oidcSettings.ClientID,
 		cfg.KeycloakClientSecret,
-		"", // redirectURI handled by frontend oidc-client-ts
+		// Explicit redirect_uri (OIDC_REDIRECT_URI); allowlist the exact value
+		// at the IdP. Empty keeps the legacy behavior where the frontend
+		// supplies it via oidc-client-ts.
+		cfg.OIDCRedirectURI,
 	)
 
 	// Claim mapping: empty username/groups claims select the default
@@ -70,14 +73,16 @@ func main() {
 
 	s3Server := buildS3Server(cfg, verifier, s3Client, claimMapper, logger)
 	uiServer := buildUIServer(cfg, verifier, s3Client, oidcCfg, claimMapper, logger)
+	healthServer := buildHealthServer(cfg)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go serve(s3Server, "S3 proxy server", logger, &wg)
 	go serve(uiServer, "Web UI server", logger, &wg)
+	go serve(healthServer, "health server", logger, &wg)
 
 	waitForShutdownSignal(logger)
-	gracefulShutdown([]*http.Server{s3Server, uiServer}, logger)
+	gracefulShutdown([]*http.Server{s3Server, uiServer, healthServer}, logger)
 	wg.Wait()
 	logger.Info("shutdown complete")
 }
@@ -85,8 +90,6 @@ func main() {
 func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, mapper auth.ClaimMapper, logger *slog.Logger) *http.Server {
 	s3Handler := proxy.NewS3HandlerWithMapper(verifier, s3Client, mapper, logger)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/_health", healthHandler)
-	mux.HandleFunc("/_ready", readyHandler)
 	mux.Handle("/", s3Handler)
 
 	return &http.Server{
@@ -106,8 +109,6 @@ func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *pr
 
 func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, oidcCfg *auth.OIDCConfig, mapper auth.ClaimMapper, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/_health", healthHandler)
-	mux.HandleFunc("/_ready", readyHandler)
 
 	api := webui.NewAPI(s3Client, logger)
 	api.RegisterRoutes(mux, verifier, oidcCfg, mapper)
@@ -124,6 +125,25 @@ func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *pr
 		// per-IP rate limiter on auth endpoints, ReadHeaderTimeout,
 		// IdleTimeout, and the ingress timeouts.
 		WriteTimeout: 0,
+	}
+}
+
+// buildHealthServer serves /_health and /_ready on a dedicated listener that
+// is intentionally NOT part of the s3/ui servers: the k8s Service and Ingress
+// only expose those, so the probe endpoints are never reachable from outside
+// the cluster - the kubelet probes this port directly.
+func buildHealthServer(cfg *config.Config) *http.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/_health", healthHandler)
+	mux.HandleFunc("/_ready", readyHandler)
+
+	return &http.Server{
+		Addr:              cfg.ListenHealthAddr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		// Tiny fixed responses only - a write deadline is safe here.
+		WriteTimeout: 10 * time.Second,
 	}
 }
 

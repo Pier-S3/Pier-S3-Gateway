@@ -15,6 +15,13 @@ import (
 // headroom while preventing memory exhaustion from a hostile/oversized body.
 const maxTokenResponseBytes = 1 << 20 // 1 MiB
 
+// CookiePath scopes the auth cookies (access_token / refresh_token and the
+// transient login cookies) to the API prefix so the browser does not attach
+// them to static-asset requests. Every Set-Cookie and the matching clear MUST
+// use this same path, otherwise the clear creates a second cookie instead of
+// deleting the original.
+const CookiePath = "/api/"
+
 // OIDCConfig holds configuration for OIDC Authorization Code + PKCE flow.
 type OIDCConfig struct {
 	KeycloakURL  string
@@ -93,7 +100,7 @@ func (c *OIDCConfig) ExchangeCode(code, codeVerifier string) (*TokenResponse, er
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token endpoint returned %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("token endpoint returned %d (error=%q)", resp.StatusCode, oauthErrorCode(body))
 	}
 
 	var tokenResp TokenResponse
@@ -128,7 +135,7 @@ func (c *OIDCConfig) RefreshTokens(refreshToken string) (*TokenResponse, error) 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh returned %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("token refresh returned %d (error=%q)", resp.StatusCode, oauthErrorCode(body))
 	}
 
 	var tokenResp TokenResponse
@@ -139,12 +146,26 @@ func (c *OIDCConfig) RefreshTokens(refreshToken string) (*TokenResponse, error) 
 	return &tokenResp, nil
 }
 
+// oauthErrorCode extracts the standard OAuth2 "error" code from a token
+// endpoint error body. The raw body is never propagated: these errors end up
+// in logs, and IdP error bodies can echo request parameters or carry verbose
+// diagnostics that do not belong there.
+func oauthErrorCode(body []byte) string {
+	var e struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &e); err != nil || e.Error == "" {
+		return "unknown"
+	}
+	return e.Error
+}
+
 // SetRefreshTokenCookie sets an HttpOnly cookie with the refresh token.
 func SetRefreshTokenCookie(w http.ResponseWriter, refreshToken string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
-		Path:     "/",
+		Path:     CookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
@@ -157,7 +178,7 @@ func ClearRefreshTokenCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
-		Path:     "/",
+		Path:     CookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,

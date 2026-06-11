@@ -141,7 +141,38 @@ func TestExchangeCodeNon200(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "400")
-	assert.Contains(t, err.Error(), "invalid_grant", "error body should be propagated")
+	assert.Contains(t, err.Error(), "invalid_grant", "OAuth error code should be propagated")
+}
+
+// TestExchangeCodeErrorBodyNotLeaked verifies that only the parsed OAuth error
+// code reaches the error string: the raw body (error_description, HTML
+// diagnostics) ends up in logs and must not be propagated verbatim.
+func TestExchangeCodeErrorBodyNotLeaked(t *testing.T) {
+	srv := tokenEndpointStub(t, http.StatusBadRequest,
+		`{"error":"invalid_grant","error_description":"sensitive-internal-detail"}`, nil)
+
+	cfg := NewOIDCConfig("https://kc", "click", "client-id", "", "https://app/cb")
+	cfg.TokenURL = srv.URL
+
+	_, err := cfg.ExchangeCode("bad", "verifier")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid_grant")
+	assert.NotContains(t, err.Error(), "sensitive-internal-detail")
+}
+
+// TestExchangeCodeNonJSONErrorBody verifies a non-JSON error body (e.g. an
+// HTML error page) degrades to error="unknown" without leaking the body.
+func TestExchangeCodeNonJSONErrorBody(t *testing.T) {
+	srv := tokenEndpointStub(t, http.StatusBadGateway, `<html>stack trace here</html>`, nil)
+
+	cfg := NewOIDCConfig("https://kc", "click", "client-id", "", "https://app/cb")
+	cfg.TokenURL = srv.URL
+
+	_, err := cfg.ExchangeCode("code", "verifier")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "502")
+	assert.Contains(t, err.Error(), "unknown")
+	assert.NotContains(t, err.Error(), "stack trace")
 }
 
 func TestExchangeCodeBadJSON(t *testing.T) {
@@ -239,7 +270,7 @@ func TestSetRefreshTokenCookie(t *testing.T) {
 	c := cookies[0]
 	assert.Equal(t, "refresh_token", c.Name)
 	assert.Equal(t, "my-refresh-token", c.Value)
-	assert.Equal(t, "/", c.Path)
+	assert.Equal(t, CookiePath, c.Path)
 	assert.True(t, c.HttpOnly, "cookie must be HttpOnly")
 	assert.True(t, c.Secure, "cookie must be Secure")
 	assert.Equal(t, http.SameSiteLaxMode, c.SameSite)
@@ -255,7 +286,7 @@ func TestClearRefreshTokenCookie(t *testing.T) {
 	c := cookies[0]
 	assert.Equal(t, "refresh_token", c.Name)
 	assert.Equal(t, "", c.Value)
-	assert.Equal(t, "/", c.Path)
+	assert.Equal(t, CookiePath, c.Path)
 	assert.True(t, c.HttpOnly)
 	assert.True(t, c.Secure)
 	assert.Equal(t, http.SameSiteLaxMode, c.SameSite)

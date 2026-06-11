@@ -39,20 +39,31 @@ type Config struct {
 	// attacker cannot MITM the discovery document or JWKS to swap the trust
 	// anchor. Sourced from OIDC_ALLOW_INSECURE ("true"/"1").
 	OIDCAllowInsecure bool
-	ListenS3Addr      string
-	ListenUIAddr      string
-	LogLevel          string
+	// OIDCRedirectURI is the explicit OAuth2 redirect_uri sent on the
+	// server-side login flow. Set it (and allowlist the exact value at the IdP)
+	// so a redirect-target regression elsewhere can never widen where tokens
+	// are delivered. Sourced from OIDC_REDIRECT_URI.
+	OIDCRedirectURI string
+	ListenS3Addr    string
+	ListenUIAddr    string
+	// ListenHealthAddr is a dedicated listener for /_health and /_ready. It is
+	// separate from the S3/UI listeners so the kubelet (or compose healthcheck)
+	// can probe the process while the Service/Ingress never expose the
+	// endpoints publicly. Sourced from LISTEN_HEALTH_ADDR.
+	ListenHealthAddr string
+	LogLevel         string
 }
 
 // Default values applied by Load when an environment variable is unset or
 // empty. Exported so callers and tests reference the canonical defaults
 // rather than duplicating string literals.
 const (
-	DefaultS3Endpoint   = "http://seaweedfs:8333"
-	DefaultS3Region     = "us-east-1"
-	DefaultListenS3Addr = ":8080"
-	DefaultListenUIAddr = ":8081"
-	DefaultLogLevel     = "info"
+	DefaultS3Endpoint       = "http://seaweedfs:8333"
+	DefaultS3Region         = "us-east-1"
+	DefaultListenS3Addr     = ":8080"
+	DefaultListenUIAddr     = ":8081"
+	DefaultListenHealthAddr = ":8082"
+	DefaultLogLevel         = "info"
 )
 
 // Load reads configuration from the environment and applies defaults.
@@ -80,8 +91,10 @@ func Load() *Config {
 		OIDCGroupsClaim:      getEnv("OIDC_GROUPS_CLAIM", ""),
 		OIDCDiscoveryURL:     getEnv("OIDC_DISCOVERY_URL", ""),
 		OIDCAllowInsecure:    isTruthy(getEnv("OIDC_ALLOW_INSECURE", "")),
+		OIDCRedirectURI:      getEnv("OIDC_REDIRECT_URI", ""),
 		ListenS3Addr:         getEnv("LISTEN_S3_ADDR", DefaultListenS3Addr),
 		ListenUIAddr:         getEnv("LISTEN_UI_ADDR", DefaultListenUIAddr),
+		ListenHealthAddr:     getEnv("LISTEN_HEALTH_ADDR", DefaultListenHealthAddr),
 		LogLevel:             getEnv("LOG_LEVEL", DefaultLogLevel),
 	}
 }
@@ -186,6 +199,16 @@ func (c *Config) ResolveOIDC() (OIDCSettings, error) {
 		disc, err := discoverOIDC(c.OIDCDiscoveryURL)
 		if err != nil {
 			return OIDCSettings{}, fmt.Errorf("oidc discovery: %w", err)
+		}
+		// Cross-check: when an explicit issuer is configured alongside
+		// discovery, the discovered issuer must match it. A mismatch means the
+		// discovery URL points at a different (possibly attacker-controlled)
+		// IdP than the one tokens are validated against - fail closed rather
+		// than silently prefer one of the two trust anchors.
+		if s.Issuer != "" && disc.Issuer != "" &&
+			strings.TrimRight(s.Issuer, "/") != strings.TrimRight(disc.Issuer, "/") {
+			return OIDCSettings{}, fmt.Errorf(
+				"oidc discovery: discovered issuer %q does not match configured issuer %q", disc.Issuer, s.Issuer)
 		}
 		if s.Issuer == "" {
 			s.Issuer = disc.Issuer
