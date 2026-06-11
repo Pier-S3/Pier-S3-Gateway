@@ -103,6 +103,50 @@ body {
 .app-sider {
   background: var(--dbx-surface) !important;
   border-right: 1px solid var(--dbx-border);
+  /* Pin the sidebar to the viewport: the page (window) scrolls with long
+     object listings, while the bucket menu keeps its own scrollbar below. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+/* Stack logo / section label / menu vertically; the menu takes the remaining
+   height and scrolls on its own when the bucket list outgrows the window. */
+.app-sider .ant-layout-sider-children {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-sider .ant-menu {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Edge drag handle for resizing the sidebar (width persisted per browser). */
+.sider-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.sider-resize-handle:hover,
+.sider-resize-handle:active {
+  background: var(--dbx-blue);
+  opacity: 0.35;
+}
+
+/* No resizing on mobile: the Sider is collapsed and nav lives in the Drawer. */
+.app-sider.ant-layout-sider-zero-width .sider-resize-handle {
+  display: none;
 }
 
 /* When AntD collapses the Sider to zero (below the `lg` breakpoint) it adds the

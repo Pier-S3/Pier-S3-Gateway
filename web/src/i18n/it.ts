@@ -29,6 +29,7 @@ const it = {
     buckets: 'Bucket',
     allBuckets: 'Tutti i bucket',
     menu: 'Apri menu',
+    resize: 'Ridimensiona la barra laterale',
   },
   theme: {
     label: 'Tema',

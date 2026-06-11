@@ -30,6 +30,7 @@ const ru = {
     buckets: 'Бакеты',
     allBuckets: 'Все бакеты',
     menu: 'Открыть меню',
+    resize: 'Изменить ширину боковой панели',
   },
   theme: {
     label: 'Тема',

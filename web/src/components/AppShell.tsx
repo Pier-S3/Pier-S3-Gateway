@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout, Menu, Avatar, Dropdown, Typography, Divider, Drawer, Button, theme } from 'antd';
 import {
   FolderOutlined,
@@ -14,6 +14,11 @@ import { useBucketsStore } from '../store/buckets';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from '../theme/ThemeSwitcher';
+import {
+  clampSiderWidth,
+  loadSiderWidth,
+  saveSiderWidth,
+} from './siderWidth';
 
 const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
@@ -27,6 +32,38 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { token } = theme.useToken();
   // Mobile navigation drawer (the Sider auto-collapses below `lg`).
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // User-resizable sidebar width, persisted in localStorage so the choice
+  // survives reloads. Resizing is pointer-driven via the edge handle below.
+  const [siderWidth, setSiderWidth] = useState(loadSiderWidth);
+  const dragStart = useRef<{ x: number; width: number } | null>(null);
+
+  const onResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Capture the pointer on the handle so move/up keep firing even when the
+    // cursor leaves the 6px-wide hit area mid-drag.
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStart.current = { x: e.clientX, width: siderWidth };
+    e.preventDefault();
+  };
+
+  // Both handlers derive the width from the drag origin + current pointer
+  // position (never from siderWidth state) so they cannot read a stale value
+  // from the render they were bound in.
+  const dragWidth = (e: React.PointerEvent<HTMLDivElement>) =>
+    clampSiderWidth(dragStart.current!.width + e.clientX - dragStart.current!.x);
+
+  const onResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    setSiderWidth(dragWidth(e));
+  };
+
+  const onResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    const width = dragWidth(e);
+    dragStart.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setSiderWidth(width);
+    saveSiderWidth(width);
+  };
 
   useEffect(() => {
     if (buckets.length === 0) fetchBuckets();
@@ -96,8 +133,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider className="app-sider" width={240} breakpoint="lg" collapsedWidth={0}>
+      <Sider className="app-sider" width={siderWidth} breakpoint="lg" collapsedWidth={0}>
         {navContent}
+        {/* Drag handle on the sidebar edge; width is persisted in
+            localStorage. Hidden by CSS when the Sider collapses on mobile. */}
+        <div
+          className="sider-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('nav.resize')}
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+        />
       </Sider>
       {/* Mobile-only navigation drawer, opened from the header hamburger. */}
       <Drawer

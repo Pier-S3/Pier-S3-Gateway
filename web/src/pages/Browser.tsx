@@ -38,6 +38,12 @@ export default function Browser() {
     if (bucket && canRead) fetchObjects(bucket, prefix);
   }, [bucket, prefix, canRead, fetchObjects]);
 
+  // The window is the scroll container: without this, entering another bucket
+  // (or folder) keeps the previous scroll offset and strands the user mid-list.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [bucket, prefix]);
+
   const handleNavigatePrefix = (newPrefix: string) => {
     // Drive folder navigation through the URL so it composes with router history
     // and never lingers across a bucket switch.

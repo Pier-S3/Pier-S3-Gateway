@@ -29,6 +29,7 @@ const en = {
     buckets: 'Buckets',
     allBuckets: 'All buckets',
     menu: 'Open menu',
+    resize: 'Resize sidebar',
   },
   theme: {
     label: 'Theme',

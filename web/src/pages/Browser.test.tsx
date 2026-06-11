@@ -69,3 +69,30 @@ describe('Browser - prefix is URL-driven', () => {
     expect(mockedGet).not.toHaveBeenCalledWith(...listParams('beta', 'css/'));
   });
 });
+
+describe('Browser - scroll position', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedGet.mockResolvedValue({ data: { objects: [], prefixes: [], truncated: false } });
+    useBrowserStore.setState({ bucket: '', prefix: '', objects: [], prefixes: [], nextPageToken: null, truncated: false });
+  });
+
+  it('scrolls the window to the top when a bucket is opened', async () => {
+    // jsdom does not implement scrolling; stub it to observe the call.
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    renderAt('/buckets/alpha');
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledWith(...listParams('alpha', '')));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+
+    // Opening another bucket resets the scroll again, so the user starts at
+    // the top instead of wherever the previous listing left them.
+    scrollTo.mockClear();
+    cleanup();
+    renderAt('/buckets/beta');
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledWith(...listParams('beta', '')));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+
+    scrollTo.mockRestore();
+  });
+});
