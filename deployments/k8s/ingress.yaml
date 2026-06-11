@@ -12,6 +12,10 @@ metadata:
     # and connection volume before traffic reaches the gateway.
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/limit-connections: "20"
+    # /_health and /_ready live on the dedicated health port (8082), which the
+    # Service does not expose - no snippet annotation is needed to hide them
+    # (server-snippet is Critical-risk and rejected by ingress-nginx >= 1.12
+    # at the default annotations-risk-level).
 spec:
   ingressClassName: nginx
   tls:

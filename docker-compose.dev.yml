@@ -1,7 +1,7 @@
 services:
   # SeaweedFS — S3-совместимое хранилище.
   # Pinned to a release tag (not :latest) for reproducible dev builds.
-  # NOTE: deployments/seaweedfs-s3.json holds admin/admin DEV-ONLY credentials.
+  # NOTE: deployments/seaweedfs-s3.dev.json holds admin/admin DEV-ONLY credentials.
   seaweedfs:
     image: chrislusf/seaweedfs:3.69
     # -s3.config defines an S3 identity. Recent images enable S3 auth by
@@ -13,7 +13,7 @@ services:
       - "9333:9333"   # Master
     volumes:
       - seaweedfs-data:/data
-      - ./deployments/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+      - ./deployments/seaweedfs-s3.dev.json:/etc/seaweedfs/s3.json:ro
 
   # Keycloak — OIDC provider
   keycloak:

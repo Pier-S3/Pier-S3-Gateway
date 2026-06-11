@@ -10,6 +10,10 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # Only the s3/ui ports, only from the ingress controller. The health port
+    # (8082) is intentionally absent: kubelet liveness/readiness probes are not
+    # subject to NetworkPolicy in common CNIs (Calico, Cilium), and nothing
+    # else should reach it.
     - from:
         - namespaceSelector:
             matchLabels:

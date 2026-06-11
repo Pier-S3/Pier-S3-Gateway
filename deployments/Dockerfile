@@ -40,5 +40,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -ldflags="-s -w" -trimpath -
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=backend /app /app
 USER 65532:65532
-EXPOSE 8080 8081
+EXPOSE 8080 8081 8082
 ENTRYPOINT ["/app"]

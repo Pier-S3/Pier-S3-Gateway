@@ -37,6 +37,11 @@ spec:
             - name: ui
               containerPort: {{ .Values.service.uiPort }}
               protocol: TCP
+            # Probe-only listener: NOT exposed by the Service/Ingress, so
+            # /_health and /_ready are unreachable from outside the cluster.
+            - name: health
+              containerPort: {{ .Values.healthPort }}
+              protocol: TCP
           envFrom:
             - secretRef:
                 name: {{ include "pier-s3-gateway.secretName" . }}
@@ -45,6 +50,8 @@ spec:
               value: ":{{ .Values.service.s3Port }}"
             - name: LISTEN_UI_ADDR
               value: ":{{ .Values.service.uiPort }}"
+            - name: LISTEN_HEALTH_ADDR
+              value: ":{{ .Values.healthPort }}"
             - name: LOG_LEVEL
               value: {{ .Values.config.logLevel | quote }}
           resources:
@@ -52,13 +59,13 @@ spec:
           readinessProbe:
             httpGet:
               path: /_ready
-              port: ui
+              port: health
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           livenessProbe:
             httpGet:
               path: /_health
-              port: ui
+              port: health
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           securityContext:

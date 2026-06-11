@@ -19,6 +19,11 @@ service:
   s3Port: 8080
   uiPort: 8081
 
+# Probe-only listener for /_health and /_ready. Deliberately NOT part of
+# `service`: the Service/Ingress never expose it, so the probe endpoints are
+# unreachable from outside the cluster.
+healthPort: 8082
+
 # Non-secret runtime configuration (passed as plain env vars).
 config:
   logLevel: "info"
@@ -101,6 +106,10 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/limit-connections: "20"
+    # /_health and /_ready live on the dedicated healthPort, which the Service
+    # does not expose - no snippet annotation is needed to hide them
+    # (server-snippet is Critical-risk and rejected by ingress-nginx >= 1.12
+    # at the default annotations-risk-level).
   # The S3 API host (routes to the s3 port).
   s3Host: pier-s3-gateway.example.com
   # The Web UI host (routes to the ui port).

@@ -34,7 +34,7 @@ services:
     depends_on:
       - openldap
 
-  # SeaweedFS — S3-compatible storage (DEV-ONLY admin/admin in seaweedfs-s3.json).
+  # SeaweedFS — S3-compatible storage (DEV-ONLY admin/admin in seaweedfs-s3.dev.json).
   seaweedfs:
     image: chrislusf/seaweedfs:3.69
     command: "server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.port=9333 -volume.port=8080"
@@ -43,7 +43,7 @@ services:
       - "9333:9333"
     volumes:
       - seaweedfs-dex-data:/data
-      - ./deployments/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+      - ./deployments/seaweedfs-s3.dev.json:/etc/seaweedfs/s3.json:ro
 
   # Pier S3 Gateway — configured against Dex via provider-neutral OIDC_* vars.
   pier-s3-gateway:

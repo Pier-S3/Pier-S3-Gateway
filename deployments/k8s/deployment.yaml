@@ -31,6 +31,11 @@ spec:
             - name: ui
               containerPort: 8081
               protocol: TCP
+            # Probe-only listener: NOT exposed by the Service/Ingress, so
+            # /_health and /_ready are unreachable from outside the cluster.
+            - name: health
+              containerPort: 8082
+              protocol: TCP
           envFrom:
             - secretRef:
                 name: pier-s3-gateway-secrets
@@ -39,6 +44,8 @@ spec:
               value: ":8080"
             - name: LISTEN_UI_ADDR
               value: ":8081"
+            - name: LISTEN_HEALTH_ADDR
+              value: ":8082"
             - name: LOG_LEVEL
               value: "info"
           resources:
@@ -51,13 +58,13 @@ spec:
           readinessProbe:
             httpGet:
               path: /_ready
-              port: ui
+              port: health
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /_health
-              port: ui
+              port: health
             initialDelaySeconds: 10
             periodSeconds: 30
           securityContext:
