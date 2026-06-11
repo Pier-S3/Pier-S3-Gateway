@@ -23,7 +23,7 @@ describe('ThemeProvider', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('defaults to system mode resolving to light (matchMedia false in tests)', () => {
+  it('defaults to the Claude Light preset (light surface)', () => {
     render(
       <ThemeProvider>
         <Probe />

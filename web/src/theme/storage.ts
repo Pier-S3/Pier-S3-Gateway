@@ -9,8 +9,8 @@ import type { PresetTheme, ThemeSelection, EffectiveScheme } from './types';
 /** localStorage key holding the active selection (JSON ThemeSelection). */
 export const SELECTION_STORAGE_KEY = 'pier.theme.selection';
 
-/** Default selection when nothing is stored. */
-export const DEFAULT_SELECTION: ThemeSelection = { kind: 'mode', mode: 'system' };
+/** Default selection when nothing is stored: the Claude Light preset. */
+export const DEFAULT_SELECTION: ThemeSelection = { kind: 'preset', id: 'claude-light' };
 
 /** Default brand token values (modern indigo accent, softened corners). */
 export const DBX_PRIMARY = '#4F46E5';
