@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -44,6 +45,11 @@ type Config struct {
 	// so a redirect-target regression elsewhere can never widen where tokens
 	// are delivered. Sourced from OIDC_REDIRECT_URI.
 	OIDCRedirectURI string
+	// BucketQuotasRaw is the raw BUCKET_QUOTAS value: a comma-separated list
+	// of <bucket>=<size> pairs (e.g. "logs=10GB,backups=2TB,*=100GB"). "*"
+	// sets a default for buckets without an explicit entry. Display-only
+	// metadata for the UI; parse with ParseBucketQuotas.
+	BucketQuotasRaw string
 	ListenS3Addr    string
 	ListenUIAddr    string
 	// ListenHealthAddr is a dedicated listener for /_health and /_ready. It is
@@ -92,6 +98,7 @@ func Load() *Config {
 		OIDCDiscoveryURL:     getEnv("OIDC_DISCOVERY_URL", ""),
 		OIDCAllowInsecure:    isTruthy(getEnv("OIDC_ALLOW_INSECURE", "")),
 		OIDCRedirectURI:      getEnv("OIDC_REDIRECT_URI", ""),
+		BucketQuotasRaw:      getEnv("BUCKET_QUOTAS", ""),
 		ListenS3Addr:         getEnv("LISTEN_S3_ADDR", DefaultListenS3Addr),
 		ListenUIAddr:         getEnv("LISTEN_UI_ADDR", DefaultListenUIAddr),
 		ListenHealthAddr:     getEnv("LISTEN_HEALTH_ADDR", DefaultListenHealthAddr),
@@ -271,6 +278,65 @@ func requireSecureURL(label, raw string, allowInsecure bool) error {
 	default:
 		return fmt.Errorf("%s has unsupported scheme %q (want https)", label, u.Scheme)
 	}
+}
+
+// quotaUnits maps a size suffix to its byte multiplier (binary, 1024-based;
+// the IEC spellings KiB/MiB/... are accepted as aliases).
+var quotaUnits = map[string]int64{
+	"":    1,
+	"B":   1,
+	"KB":  1 << 10,
+	"KIB": 1 << 10,
+	"MB":  1 << 20,
+	"MIB": 1 << 20,
+	"GB":  1 << 30,
+	"GIB": 1 << 30,
+	"TB":  1 << 40,
+	"TIB": 1 << 40,
+}
+
+// ParseBucketQuotas parses BUCKET_QUOTAS ("name=10GB,other=512MB,*=1TB") into
+// a bucket -> bytes map. An empty value yields an empty map. Malformed pairs
+// are an error so a typo fails startup instead of silently dropping a quota.
+func (c *Config) ParseBucketQuotas() (map[string]int64, error) {
+	quotas := make(map[string]int64)
+	raw := strings.TrimSpace(c.BucketQuotasRaw)
+	if raw == "" {
+		return quotas, nil
+	}
+	for _, pair := range strings.Split(raw, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		name, sizeStr, ok := strings.Cut(pair, "=")
+		name, sizeStr = strings.TrimSpace(name), strings.TrimSpace(sizeStr)
+		if !ok || name == "" || sizeStr == "" {
+			return nil, fmt.Errorf("BUCKET_QUOTAS: malformed entry %q (want <bucket>=<size>)", pair)
+		}
+		bytes, err := parseByteSize(sizeStr)
+		if err != nil {
+			return nil, fmt.Errorf("BUCKET_QUOTAS: entry %q: %w", pair, err)
+		}
+		quotas[name] = bytes
+	}
+	return quotas, nil
+}
+
+// parseByteSize parses "512", "10GB", "1.5TiB" (case-insensitive) into bytes.
+func parseByteSize(s string) (int64, error) {
+	upper := strings.ToUpper(strings.TrimSpace(s))
+	num := strings.TrimRight(upper, "BKMGIT")
+	unit := strings.TrimSpace(upper[len(num):])
+	mult, ok := quotaUnits[unit]
+	if !ok {
+		return 0, fmt.Errorf("unknown size unit %q", unit)
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(num), 64)
+	if err != nil || value < 0 {
+		return 0, fmt.Errorf("invalid size %q", s)
+	}
+	return int64(value * float64(mult)), nil
 }
 
 // isTruthy reports whether an env value means "on" ("true"/"1"/"yes",

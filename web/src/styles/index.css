@@ -471,6 +471,28 @@ body {
   color: var(--dbx-muted);
 }
 
+/* Quota usage line: a slim progress bar with the quota value at its right. */
+.bucket-quota {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+
+.bucket-quota .ant-progress {
+  flex: 1;
+  margin: 0;
+  line-height: 1;
+}
+
+.bucket-quota-label {
+  font-family: var(--dbx-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--dbx-muted);
+  flex: none;
+}
+
 /* Access badges: compact, pill-shaped, with a leading status dot. */
 .bucket-access-value {
   display: inline-flex;

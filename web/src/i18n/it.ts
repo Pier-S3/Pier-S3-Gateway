@@ -49,6 +49,7 @@ const it = {
     read: 'R',
     writeOnly: 'W',
     access: 'Accesso',
+    quotaUsage: '{{used}} di {{quota}} in uso',
   },
   browser: {
     upload: 'Carica',

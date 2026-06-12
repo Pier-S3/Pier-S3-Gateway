@@ -49,6 +49,7 @@ const fr = {
     read: 'R',
     writeOnly: 'W',
     access: 'Accès',
+    quotaUsage: '{{used}} sur {{quota}} utilisés',
   },
   browser: {
     upload: 'Importer',

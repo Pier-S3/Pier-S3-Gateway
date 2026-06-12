@@ -46,6 +46,41 @@ func setRequiredEnv(t *testing.T) {
 	}
 }
 
+func TestParseBucketQuotas(t *testing.T) {
+	parse := func(raw string) (map[string]int64, error) {
+		c := Config{BucketQuotasRaw: raw}
+		return c.ParseBucketQuotas()
+	}
+
+	t.Run("empty yields empty map", func(t *testing.T) {
+		q, err := parse("")
+		require.NoError(t, err)
+		assert.Empty(t, q)
+	})
+
+	t.Run("parses units and wildcard", func(t *testing.T) {
+		q, err := parse("logs=10GB, backups=2TiB ,*=512MB,raw=1024")
+		require.NoError(t, err)
+		assert.Equal(t, int64(10)<<30, q["logs"])
+		assert.Equal(t, int64(2)<<40, q["backups"])
+		assert.Equal(t, int64(512)<<20, q["*"])
+		assert.Equal(t, int64(1024), q["raw"])
+	})
+
+	t.Run("parses fractional sizes", func(t *testing.T) {
+		q, err := parse("x=1.5GB")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1.5*float64(1<<30)), q["x"])
+	})
+
+	t.Run("rejects malformed entries", func(t *testing.T) {
+		for _, raw := range []string{"justname", "x=", "=10GB", "x=10XB", "x=-5GB"} {
+			_, err := parse(raw)
+			assert.Error(t, err, "raw=%q", raw)
+		}
+	})
+}
+
 func TestGetEnv(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -20,6 +20,11 @@ import (
 type API struct {
 	backend s3Backend
 	logger  *slog.Logger
+	stats   *statsCache
+	// quotas maps bucket name -> quota in bytes ("*" is the default for
+	// buckets without an explicit entry). Display-only metadata from
+	// BUCKET_QUOTAS; enforcement stays with the storage backend.
+	quotas map[string]int64
 }
 
 // NewAPI creates a new API handler with dependencies.
@@ -30,7 +35,14 @@ func NewAPI(s3Client *proxy.S3Client, logger *slog.Logger) *API {
 	return &API{
 		backend: newS3Backend(s3Client),
 		logger:  logger,
+		stats:   newStatsCache(),
 	}
+}
+
+// SetBucketQuotas installs the per-bucket quota table surfaced by the stats
+// endpoint. Call before serving requests.
+func (a *API) SetBucketQuotas(quotas map[string]int64) {
+	a.quotas = quotas
 }
 
 // newAPIWithBackend builds an API around an arbitrary s3Backend. Used by tests
@@ -39,6 +51,7 @@ func newAPIWithBackend(backend s3Backend, logger *slog.Logger) *API {
 	return &API{
 		backend: backend,
 		logger:  logger,
+		stats:   newStatsCache(),
 	}
 }
 
@@ -430,6 +443,7 @@ func (a *API) RegisterRoutes(mux *http.ServeMux, verifier auth.TokenVerifier, oi
 
 	// Bucket endpoints
 	mux.Handle("GET /api/v1/buckets", authMw(http.HandlerFunc(a.HandleListBuckets)))
+	mux.Handle("GET /api/v1/buckets/{bucket}/stats", authMw(http.HandlerFunc(a.HandleBucketStats)))
 
 	// Object endpoints - Go 1.22 method-based routing with a {key...} wildcard.
 	// The wildcard must be the final segment, so object metadata is exposed

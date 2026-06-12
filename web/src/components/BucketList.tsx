@@ -1,4 +1,4 @@
-import { List, Card, Skeleton, Empty, Tooltip } from 'antd';
+import { List, Card, Skeleton, Empty, Tooltip, Progress } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { BucketInfo } from '../store/buckets';
@@ -10,7 +10,8 @@ interface Props {
 }
 
 function formatBytes(bytes: number | undefined, dash: string): string {
-  if (!bytes) return dash;
+  if (bytes === undefined) return dash;
+  if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let i = 0;
   let val = bytes;
@@ -77,12 +78,40 @@ export default function BucketList({ buckets, loading }: Props) {
                 {hasStats && (
                   <div className="bucket-stats">
                     {bucket.object_count !== undefined && (
-                      <span>{t('common.objects', { count: bucket.object_count })}</span>
+                      <span>
+                        {/* "≥" marks lower-bound totals when the server-side
+                            stats walk hit its cap on a very large bucket. */}
+                        {bucket.stats_truncated ? '≥ ' : ''}
+                        {t('common.objects', { count: bucket.object_count })}
+                      </span>
                     )}
                     {bucket.size_bytes !== undefined && (
-                      <span>{formatBytes(bucket.size_bytes, dash)}</span>
+                      <span>
+                        {bucket.stats_truncated ? '≥ ' : ''}
+                        {formatBytes(bucket.size_bytes, dash)}
+                      </span>
                     )}
                   </div>
+                )}
+                {!!bucket.quota_bytes && bucket.size_bytes !== undefined && (
+                  <Tooltip
+                    title={t('buckets.quotaUsage', {
+                      used: formatBytes(bucket.size_bytes, dash),
+                      quota: formatBytes(bucket.quota_bytes, dash),
+                    })}
+                  >
+                    <div className="bucket-quota">
+                      <Progress
+                        percent={Math.min(100, Math.round((bucket.size_bytes / bucket.quota_bytes) * 100))}
+                        size="small"
+                        status={bucket.size_bytes / bucket.quota_bytes >= 0.9 ? 'exception' : 'normal'}
+                        showInfo={false}
+                      />
+                      <span className="bucket-quota-label">
+                        {formatBytes(bucket.quota_bytes, dash)}
+                      </span>
+                    </div>
+                  </Tooltip>
                 )}
               </div>
               <span

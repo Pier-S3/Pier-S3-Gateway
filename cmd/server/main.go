@@ -71,8 +71,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Display-only bucket quotas for the UI stats endpoint; a malformed
+	// BUCKET_QUOTAS is a startup error rather than a silently missing quota.
+	quotas, err := cfg.ParseBucketQuotas()
+	if err != nil {
+		logger.Error("invalid bucket quotas", "error", err.Error())
+		os.Exit(1)
+	}
+
 	s3Server := buildS3Server(cfg, verifier, s3Client, claimMapper, logger)
-	uiServer := buildUIServer(cfg, verifier, s3Client, oidcCfg, claimMapper, logger)
+	uiServer := buildUIServer(cfg, verifier, s3Client, oidcCfg, claimMapper, quotas, logger)
 	healthServer := buildHealthServer(cfg)
 
 	var wg sync.WaitGroup
@@ -107,10 +115,11 @@ func buildS3Server(cfg *config.Config, verifier auth.TokenVerifier, s3Client *pr
 	}
 }
 
-func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, oidcCfg *auth.OIDCConfig, mapper auth.ClaimMapper, logger *slog.Logger) *http.Server {
+func buildUIServer(cfg *config.Config, verifier auth.TokenVerifier, s3Client *proxy.S3Client, oidcCfg *auth.OIDCConfig, mapper auth.ClaimMapper, quotas map[string]int64, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 
 	api := webui.NewAPI(s3Client, logger)
+	api.SetBucketQuotas(quotas)
 	api.RegisterRoutes(mux, verifier, oidcCfg, mapper)
 	mux.Handle("/", webui.StaticHandler(cfg.KeycloakURL))
 

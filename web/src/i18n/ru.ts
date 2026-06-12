@@ -50,6 +50,7 @@ const ru = {
     read: 'R',
     writeOnly: 'W',
     access: 'Доступ',
+    quotaUsage: 'Занято {{used}} из {{quota}}',
   },
   browser: {
     upload: 'Загрузить',
